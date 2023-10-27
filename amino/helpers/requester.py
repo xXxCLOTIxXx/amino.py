@@ -18,13 +18,15 @@ class Requester:
 		else:raise InvalidSessionType(type(self.session))
 
 
-	def make_request(self, method: str, endpoint: str, body = None, successfully: int = 200, headers = None):
+	def make_request(self, method: str, endpoint: str, body = None, successfully: int = 200, headers = None, timeout=None):
 		if self.session_type!="sync":raise InvalidFunctionСall("You cannot select this function, your session type is async")
-		response = self.session.request(method, f"{self.api}{endpoint}", proxies=self.proxies, verify=self.verify, data=body, headers=headers)
-		return check_exceptions(response.text) if response.status_code != successfully else response
+		response = self.session.request(method, f"{self.api}{endpoint}", proxies=self.proxies, verify=self.verify, data=body, headers=headers, timeout=timeout)
+		if successfully: return check_exceptions(response.text, response.status_code) if response.status_code != successfully else response
+		return response
 
 
 	async def make_async_request(self, method: str, endpoint: str, body = None, successfully: int = 200, headers = None):
 		if self.session_type!="sync":raise InvalidFunctionСall("You cannot select this function, your session type is sync")
 		response = await self.session.request(method, f"{self.api}{endpoint}", data=dumps(body) if body else None, headers=headers)
-		return check_exceptions(await response.text()) if response.status != successfully else response
+		if successfully: return check_exceptions(await response.text(), response.status) if response.status != successfully else response
+		return response

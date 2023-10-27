@@ -134,6 +134,28 @@ class SocketHandler:
 			sleep(self.online_sleep_time)
 
 
+	def vc_loop(self, comId: int, chatId: str, joinType: str):
+		while chatId in self.active_live_chats and self.run:
+			try:
+				data = {
+					"o": {
+						"ndcId": int(comId),
+						"threadId": chatId,
+						"joinRole": joinType,
+						"id": "2154531"
+					},
+					"t": 112
+				}
+				data = dumps(data)
+				self.send(data)
+				sleep(60)
+			except Exception as e:
+				print(e)
+
+
+
+
+
 	def socket_close(self):
 		self.run, self.active = False, False
 		sleep(1)
