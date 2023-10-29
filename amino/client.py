@@ -1076,97 +1076,33 @@ class Client(SocketHandler, Requester, Callbacks):
 		self.send_action(message_type=306, body=data)
 
 
-
-
-
-
-
-	def join_voice_chat(self, comId: int, chatId: str, joinType: int = 1):
+	def join_live_chat(self, chatId: str, comId: int = None, as_viewer: bool = False):
 
 		data = {
-			"o": {
-				"ndcId": int(comId),
-				"threadId": chatId,
-				"joinRole": joinType,
-				"id": "2154531"
-			},
-			"t": 112
+			"threadId": chatId,
+			"joinRole": 2 if as_viewer else 1,
 		}
-		data = dumps(data)
-		self.send(data)
+		if comId:data["ndcId"]=int(comId)
+		self.send_action(message_type=112, body=data)
 
-	def join_video_chat(self, comId: int, chatId: str, joinType: int = 1):
 
+
+	def start_vc(self, chatId: str, comId: int = None, join_as_viewer: bool = False):
+		self.join_live_chat(chatId=chatId, comId=comId, as_viewer=join_as_viewer)
 		data = {
-			"o": {
-				"ndcId": int(comId),
-				"threadId": chatId,
-				"joinRole": joinType,
-				"channelType": 5,
-				"id": "2154531"
-			},
-			"t": 108
+			"threadId": chatId,
+			"channelType": 1
 		}
-		data = dumps(data)
-		self.send(data)
+		if comId:data["ndcId"]=int(comId)
+		self.send_action(message_type=108, body=data)
 
-	def join_video_chat_as_viewer(self, comId: int, chatId: str):
-		data = {
-			"o":
-				{
-					"ndcId": int(comId),
-					"threadId": chatId,
-					"joinRole": 2,
-					"id": "72446"
-				},
-			"t": 112
-		}
-		data = dumps(data)
-		self.send(data)
-	
+		self.active_live_chats.append(chatId)
+		Thread(target=self.vc_loop, args=(comId, chatId, join_as_viewer)).start()
+
+	def end_vc(self, chatId: str, comId: int = None):
+		self.join_live_chat(chatId=chatId, comId=comId, as_viewer=True)
+		self.leave_from_live_chat(chatId)
 
 	def leave_from_live_chat(self, chatId: str):
 		if chatId in self.active_live_chats:
 			self.active_live_chats.remove(chatId)
-
-	def start_vc(self, comId: str, chatId: str, joinType: int = 1):
-		data = {
-			"o": {
-				"ndcId": int(comId),
-				"threadId": chatId,
-				"joinRole": joinType,
-				"id": "2154531"
-			},
-			"t": 112
-		}
-		data = dumps(data)
-		self.send(data)
-		data = {
-			"o": {
-				"ndcId": int(comId),
-				"threadId": chatId,
-				"channelType": 1,
-				"id": "2154531"
-			},
-			"t": 108
-		}
-		data = dumps(data)
-		self.send(data)
-		self.active_live_chats.append(chatId)
-		Thread(target=self.run_vc, args=(comId, chatId, joinType)).start()
-
-	def end_vc(self, comId: str, chatId: str, joinType: int = 2):
-		self.leave_from_live_chat(chatId)
-		data = dumps({
-			"o": {
-				"ndcId": int(comId),
-				"threadId": chatId,
-				"joinRole": joinType,
-				"id": "2154531"
-			},
-			"t": 112
-		})
-		self.send(data)
-
-	def leave_from_all_live_chats(self):
-		self.active_live_chats=list()

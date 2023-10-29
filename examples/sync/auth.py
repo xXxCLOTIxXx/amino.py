@@ -1,7 +1,7 @@
 from amino import Client
 
-email = "twinkclots15@gmail.com"
-password = "9379992p"
+email = "@gmail.com"
+password = "password"
 
-client = Client(socket_enabled=False)
+client = Client()
 client.login(email=email, password=password)

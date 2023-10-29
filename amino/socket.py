@@ -21,6 +21,7 @@ class SocketHandler:
 	socket_thread = None
 	old_message = list()
 	online_list = set()
+	active_live_chats = list()
 	run = True
 
 
@@ -133,27 +134,10 @@ class SocketHandler:
 
 
 
-'''	def vc_loop(self, comId: int, chatId: str, joinType: str):
+	def vc_loop(self, comId: int, chatId: str, joinType: str):
 		while chatId in self.active_live_chats and self.run:
-			try:
-				data = {
-					"o": {
-						"ndcId": int(comId),
-						"threadId": chatId,
-						"joinRole": joinType,
-						"id": "2154531"
-					},
-					"t": 112
-				}
-				data = dumps(data)
-				self.send(data)
-				sleep(60)
-			except Exception as e:
-				print(e)
-'''
-
-
-
+			self.join_live_chat(chatId=chatId, comId=comId, as_viewer=joinType)
+			sleep(self.ping_time)
 
 
 
