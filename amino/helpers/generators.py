@@ -8,6 +8,7 @@ from os import urandom
 from time import time as timestamp
 from time import strftime, gmtime
 from uuid import uuid4
+from random import randrange
 
 
 
@@ -26,6 +27,9 @@ def generate_deviceId():
 	mac = new(DEVICE_KEY, ur, sha1)
 	return f"{ur.hex()}{mac.hexdigest()}".upper()
 
+
+def generate_action_id(data: dict):
+	return randrange(1000, 10001, 1) * randrange(1000, 10001, 1)
 
 
 

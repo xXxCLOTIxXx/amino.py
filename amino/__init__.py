@@ -1,5 +1,7 @@
 from .helpers.generators import *
 from .client import Client
+from .community_client import LocalClient
+from .full_client import FullClient
 
 
 from os import system as s
@@ -10,13 +12,13 @@ __title__ = 'amino.api'
 __author__ = 'Xsarz'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2023-2024 Xsarz'
-__version__ = '0.2b'
+__version__ = '0.2.2'
 try:__newest__ = loads(get("https://pypi.org/pypi/amino.api/json").text)["info"]["version"]
 except:__newest__ = __version__
 
 
 def check_version() -> tuple:
-	if __version__ != __newest__:return (False if __version__ != __newest__ else True, __newest__)
+	return (False if __version__ != __newest__ else True, __newest__) 
 
 
 def library_update():

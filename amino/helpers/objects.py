@@ -76,12 +76,13 @@ class UserProfile:
 class FromCode:
 	def __init__(self, data: dict = {}):
 		self.json = data
+		self.community = CommunityInfo(self.json.get("extensions", {}).get("community", {}))
 		linkInfo = self.json.get("extensions", {}).get("linkInfo", {})
 
 		self.path = self.json.get("path")
 		self.objectId = linkInfo.get("objectId")
 		self.targetCode = linkInfo.get("targetCode")
-		self.comId = linkInfo.get("ndcId")
+		self.comId = linkInfo.get("ndcId") or self.community.comId
 		self.fullPath = linkInfo.get("fullPath")
 		self.shortCode = linkInfo.get("shortCode")
 		self.objectType = linkInfo.get("objectType")

@@ -10,27 +10,26 @@ from traceback import format_exc
 from .helpers.exceptions import SocketNotStarted
 from .helpers.headers import ws_headers
 from .helpers import objects
+from .helpers.generators import generate_action_id
+
+
 
 class SocketHandler:
 	socket_url = "wss://ws1.narvii.com"
 	socket = None
-	reconnectTime = 60
-	online_sleep_time = 15
-	active = False
+	ping_time = 20
 	socket_thread = None
 	old_message = list()
 	online_list = set()
 	run = True
 
+
 	def __init__(self, whitelist_communities: list = None, old_message_mode: bool = False, sock_trace: bool = False, debug: bool = False):
 		enableTrace(sock_trace)
 		self.debug = debug
-		self.socket_thread = None
-		self.reconnect_thread = Thread(target=self.reconnect)
-		self.reconnect_thread.start()
 		self.old_message_mode = old_message_mode
 		self.whitelist = whitelist_communities
-
+		Thread(target=self.online_loop).start()
 
 
 	def connect(self):
@@ -47,42 +46,53 @@ class SocketHandler:
 				header = ws_headers(final=final, sid=self.profile.sid, deviceId=deviceId),
 			)
 
-			self.active = True
 			self.socket_thread = Thread(target=self.socket.run_forever)
 			self.socket_thread.start()
-
-			if self.reconnect_thread is None:
-				self.reconnect_thread = Thread(target=self.reconnect)
-				self.reconnect_thread.start()
 			sleep(1.5)
 			if self.debug:
 				print(f"[socket][start] Socket Started")
+			Thread(target=self.connection_support).start()
 		except Exception as e:
 			if self.debug:
 				print(f"[socket][start] Error while starting Socket : {e}")
 
+
 	def close(self):
 		if self.debug:
 			print(f"[socket][close] Closing Socket")
-
-		self.active = False
 		try:
 			self.socket.close()
+			self.run = False
 		except Exception as closeError:
 			if self.debug:
 				print(f"[socket][close] Error while closing Socket : {closeError}")
 
-		return
 
-	def reconnect(self):
+	def connection_support(self):
 		while self.run:
-			sleep(self.reconnectTime)
-			if self.active and self.run:
-				if self.debug:
-					print(f"[socket][reconnect_handler] Reconnecting Socket")
+			self.send_action(116, {"threadChannelUserInfoList": []})
+			sleep(self.ping_time)
 
-				self.close()
-				self.connect()
+
+
+	def send_action(self, message_type: int, body: dict):
+
+		body["id"] = str(randint(1, 1000000))
+		self.send(dumps({
+				"t": message_type,
+				"o": body,
+			}))
+
+	def send(self, data):
+		if self.debug:
+			print(f"[socket][send] Sending Data : {data}")
+		if not self.socket_thread:
+			if self.debug:
+				print(f"[socket][send][error] Socket not started !")
+				return
+			raise SocketNotStarted()
+		self.socket.send(data)
+
 
 
 	def handle_message(self, ws, data):
@@ -96,16 +106,6 @@ class SocketHandler:
 			self.old_message.append((ws, data)) if self.old_message_mode else self.resolve(data)
 		except:
 			print(format_exc())
-
-	def send(self, data):
-		if self.debug:
-			print(f"[socket][send] Sending Data : {data}")
-		if not self.socket_thread:
-			if self.debug:
-				print(f"[socket][send][error] Socket not started !")
-				return
-			raise SocketNotStarted()
-		self.socket.send(data)
 
 
 	def old_message_handler(self):
@@ -123,18 +123,17 @@ class SocketHandler:
 	def online_loop(self):
 		while self.run:
 			for com in self.online_list:
-				data =  {
-					"t": 304,
-					"o": {"actions": ["Browsing"], "target":f"ndc://x{com}/", "ndcId":com,'id': str(randint(1, 1000000))},
-				}
-				try:
-					self.send(dumps(data))
-					sleep(0.5)
-				except:pass
-			sleep(self.online_sleep_time)
+				self.send_action(message_type=304, body={
+					"actions": ["Browsing"],
+					"target":f"ndc://x{com}/",
+					"ndcId":com
+				})
+				sleep(1.5)
+			sleep(self.ping_time)
 
 
-	def vc_loop(self, comId: int, chatId: str, joinType: str):
+
+'''	def vc_loop(self, comId: int, chatId: str, joinType: str):
 		while chatId in self.active_live_chats and self.run:
 			try:
 				data = {
@@ -151,15 +150,7 @@ class SocketHandler:
 				sleep(60)
 			except Exception as e:
 				print(e)
-
-
-
-
-
-	def socket_close(self):
-		self.run, self.active = False, False
-		sleep(1)
-		self.close()
+'''
 
 
 

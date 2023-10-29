@@ -1020,6 +1020,67 @@ class Client(SocketHandler, Requester, Callbacks):
 		return self.resolve(data)
 
 
+	def online(self, comId: int):
+		self.online_list.add(comId)
+
+	def offline(self, comId: int):
+		try:self.online_list.remove(comId)
+		except KeyError:pass
+
+
+	def typing_start(self, chatId: str, comId: int = None):
+
+		data = {
+			"actions": ["Typing"],
+			"threadId": chatId,
+			"target": f"ndc://x{comId}/chat-thread/{chatId}" if comId else f"ndc://x0/chat-thread/{chatId}",
+			"params": {"threadType": 2}
+		}
+		if comId:data["ndcId"]=comId
+		self.send_action(message_type=304, body=data)
+
+
+
+	def typing_end(self, chatId: str, comId: int = None):
+
+		data = {
+			"actions": ["Typing"],
+			"threadId": chatId,
+			"target": f"ndc://x{comId}/chat-thread/{chatId}" if comId else f"ndc://x0/chat-thread/{chatId}",
+			"params": {"threadType": 2}
+		}
+		if comId:data["ndcId"]=comId
+		self.send_action(message_type=306, body=data)
+
+
+	def recording_start(self, chatId: str, comId: int = None):
+
+		data = {
+			"actions": ["Recording"],
+			"threadId": chatId,
+			"target": f"ndc://x{comId}/chat-thread/{chatId}" if comId else f"ndc://x0/chat-thread/{chatId}",
+			"params": {"threadType": 2}
+		}
+		if comId:data["ndcId"]=comId
+		self.send_action(message_type=304, body=data)
+
+	def recording_end(self, chatId: str, comId: int = None):
+
+		data = {
+			"actions": ["Recording"],
+			"threadId": chatId,
+			"target": f"ndc://x{comId}/chat-thread/{chatId}" if comId else f"ndc://x0/chat-thread/{chatId}",
+			"params": {"threadType": 2}
+		}
+		if comId:data["ndcId"]=comId
+		self.send_action(message_type=306, body=data)
+
+
+
+
+
+
+
 	def join_voice_chat(self, comId: int, chatId: str, joinType: int = 1):
 
 		data = {
