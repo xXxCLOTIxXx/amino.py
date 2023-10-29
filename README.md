@@ -1,6 +1,6 @@
+[![PyPI version](https://badge.fury.io/py/amino.api.svg)](https://badge.fury.io/py/amino.api)
 <body>
 	<table align="center">
-    [![PyPI version](https://badge.fury.io/py/amino.api.svg)](https://badge.fury.io/py/amino.api)
 		<tr> <th colspan="3">Library Information</th> </tr>
 		<tr>
 			<td>
