@@ -1,4 +1,3 @@
-[![PyPI version](https://badge.fury.io/py/amino.api.svg)](https://badge.fury.io/py/amino.api)
 <body>
 	<table align="center">
 		<tr> <th colspan="3">Library Information</th> </tr>
