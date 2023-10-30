@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 info = {
 	"name": "amino.api",
-	"version": "0.2.2",
+	"version": "0.2.2.5",
 	"github_page": "https://github.com/xXxCLOTIxXx/amino.py",
 	"download_link": "https://github.com/xXxCLOTIxXx/amino.py/archive/refs/heads/main.zip",
 	"license": "MIT",
@@ -33,7 +33,12 @@ info = {
 
 	"install_requires": [
 		"requests",
-		"aiohttp"
+		"aiohttp",
+		"websocket-client==1.3.1",
+		"websockets",
+		"ujson",
+		"pydantic"
+
 	]
 
 }

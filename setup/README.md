@@ -1,6 +1,5 @@
 <body>
 	<table align="center">
-		<img src="https://github.com/xXxCLOTIxXx/amino.py/blob/main/card.png">
 		<tr> <th colspan="3">Library Information</th> </tr>
 		<tr>
 			<td>
