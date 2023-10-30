@@ -730,6 +730,12 @@ class Client(SocketHandler, Requester, Callbacks):
 		return response.status_code
 
 
+	def delete_co_host(self, chatId: str, userId: str) -> int:
+
+		response = self.make_request(method="DELETE", endpoint=f"/g/s/chat/thread/{chatId}/co-host/{userId}", headers=self.get_headers())
+		return response.status_code
+
+
 	def invite_to_vc(self, chatId: str, userId: str) -> int:
 
 		data = dumps({

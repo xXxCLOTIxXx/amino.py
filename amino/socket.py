@@ -1,10 +1,10 @@
 from time import sleep, time
-from json import dumps
+from json import dumps, loads
 from websocket import WebSocketApp, enableTrace
 from threading import Thread
 from random import randint
 from traceback import format_exc
-
+from datetime import datetime
 
 from .helpers.exceptions import SocketNotStarted
 from .helpers.headers import ws_headers
@@ -39,42 +39,46 @@ class SocketHandler:
 		if old_message_mode:
 			Thread(target=self.old_message_handler).start()
 
+	def log(self, type: str, message: str):
+		if self.debug:print(f"[{datetime.now()}][WS][{type}]: {message}")
 
-	def connect(self):
-		try:
-			if self.debug:print(f"[socket][start] Starting Socket")
-			if self.profile.sid is None:
-				if self.debug:print(f"[socket][start] sid is None")
-				return
+
+	def _create_connection(self):
+
 			deviceId = self.deviceId
 			final = f"{deviceId}|{int(time() * 1000)}"
-			self.socket = WebSocketApp(
+			return WebSocketApp(
 				f"{self.socket_url}/?signbody={final.replace('|', '%7C')}",
 				on_message = self.handle_message,
 				header = ws_headers(final=final, sid=self.profile.sid, deviceId=deviceId),
 			)
 
+
+	def connect(self):
+		try:
+			self.log("Start", f"Creating a connection to {self.socket_url}")
+			if self.profile.sid is None:
+				self.log("StartError", f"sid is None")
+				return
+			self.socket = self._create_connection()
 			self.socket_thread = Thread(target=self.socket.run_forever)
 			self.socket_thread.start()
 			self.run = True
 			sleep(1.5)
-			if self.debug:
-				print(f"[socket][start] Socket Started")
 			Thread(target=self.connection_support).start()
+			self.log("Start", f"Connection established")
 		except Exception as e:
-			if self.debug:
-				print(f"[socket][start] Error while starting Socket : {e}")
+			self.log("StartError", f"Error while starting Socket : {e}")
 
 
 	def close(self):
-		if self.debug:
-			print(f"[socket][close] Closing Socket")
+		self.log("Disconnect", f"Closing Socket")
 		try:
 			self.socket.close()
 			self.run = False
+			self.log("Disconnect", f"Socket closed")
 		except Exception as closeError:
-			if self.debug:
-				print(f"[socket][close] Error while closing Socket : {closeError}")
+			self.log("CloseError", f"Error while closing Socket : {e}")
 
 
 	def connection_support(self):
@@ -93,28 +97,23 @@ class SocketHandler:
 			}))
 
 	def send(self, data):
-		if self.debug:
-			print(f"[socket][send] Sending Data : {data}")
-		if not self.socket_thread:
-			if self.debug:
-				print(f"[socket][send][error] Socket not started !")
-				return
-			raise SocketNotStarted()
+		self.log("Send", f"Sending Data : {data}")
+		if not self.socket_thread:raise SocketNotStarted()
 		self.socket.send(data)
 
 
 
 	def handle_message(self, ws, data):
-		data = data.json()
+		try:data = loads(data)
+		except JSONDecodeError:
+			self.log("Receive", f"An unreadable message was received")
+			return
+		self.log("Receive", f"Message type {data['t']} received")
 		if self.whitelist:
-			if data.get("ndcId") not in self.whitelist:
-				if self.debug:
-					print(f"[socket][handle_message] {data.get('ndcId')} not in whitelist")
+			if data.get('o', {}).get("ndcId") not in self.whitelist:
+				self.log("Whitelist", f"{data.get('o',{}).get('ndcId')} not in whitelist")
 				return
-		try:
 			self.old_message.append((ws, data)) if self.old_message_mode else self.call(data)
-		except:
-			print(format_exc())
 
 
 	def old_message_handler(self):

@@ -1,12 +1,9 @@
-from aiohttp import ClientSession, WSMsgType
+from aiohttp import WSMsgType, ClientWebSocketResponse
 from asyncio import create_task, sleep
-
 from time import time
-from json import dumps
+from json import dumps, loads, JSONDecodeError
 from random import randint
-from traceback import format_exc
-
-
+from datetime import datetime
 
 from amino.helpers.exceptions import SocketNotStarted
 from amino.helpers.headers import ws_headers
@@ -25,69 +22,91 @@ class SocketHandler:
 	old_message = list()
 	online_list = set()
 	active_live_chats = list()
-	task_resolve = None
 	connection = None
 	connection_support_loop = None
+	_online_loop = None
 
-	def __init__(self, whitelist_communities: list = None, old_message_mode: bool = False, debug: bool = False):
+	def __init__(self, whitelist_communities: list = None, debug: bool = False):
 		self.debug = debug
-		self.old_message_mode = old_message_mode
 		self.whitelist = whitelist_communities
+
+
+	def log(self, type: str, message: str):
+		if self.debug:print(f"[{datetime.now()}][WS][{type}]: {message}")
+
+	async def _create_connection(self) -> ClientWebSocketResponse:
+		deviceId = self.deviceId
+		final = f"{deviceId}|{int(time() * 1000)}"
+		connection = await self.session.ws_connect(
+			f"{self.socket_url}/?signbody={final.replace('|', '%7C')}",
+			headers=ws_headers(
+				final=final,
+				sid=self.profile.sid,
+				deviceId=deviceId
+				)
+			)
+		return connection
 
 
 	async def connect(self):
 		try:
-			if self.debug:
-				print(f"[socket][start] Starting Socket")
-			deviceId = self.deviceId
-			final = f"{deviceId}|{int(time() * 1000)}"
-			self.connection = await self.session.ws_connect(f"{socket_url}/?signbody={final.replace('|', '%7C')}", headers=ws_headers(final=final, sid=self.profile.sid, deviceId=deviceId))
-			self.task_resolve = create_task(self.resolve())
+			self.log("Start", f"Creating a connection to {self.socket_url}")
+			if self.profile.sid is None:
+				self.log("StartError", f"sid is None")
+				return
+			self.connection = await self._create_connection()
 			self.connection_support_loop = create_task(self.connection_support())
-			if self.debug:
-				print(f"[socket][start] Socket Started")
+			self._online_loop = create_task(self.online_loop())
+			self.log("Start", f"Connection established")
 		except Exception as e:
-			if self.debug:
-				print(f"[socket][start] Error while starting Socket : {e}")
+			self.log("StartError", f"Error while starting Socket : {e}")
+			return
+		await self.resolve()
+
 
 
 	async def disconnect(self):
-		if self.debug:
-			print(f"[socket][close] Closing Socket")
+		self.log("Disconnect", f"Closing Socket")
 		try:
-			if self.task_resolve: self.task_resolve.cancel()
-
 			if self.connection:
 				await self.connection.close()
 				self.connection = None
-
 			if self.connection_support_loop:
-				self.self.connection_support_loop.cancel()
+				self.connection_support_loop.cancel()
 				self.connection_support_loop = None
-
-			if self.debug:
-				print(f"[socket][close] Socket closed")
+			if self._online_loop:
+				self._online_loop.cancel()
+				self._online_loop = None
+			self.active_live_chats = list()
+			self.log("Disconnect", f"Socket closed")
 		except Exception as e:
-			if self.debug:
-				print(f"[socket][close] Error while closing Socket : {e}")
-
+			self.log("CloseError", f"Error while closing Socket : {e}")
 
 
 	async def resolve(self):
-		while True:
-			msg = await self.connection.receive()
-			data = msg.data.json
-			await self.call(data)
 
+		async for raw_message in self.connection:
+			if raw_message.type == WSMsgType.ping:
+				await self.connection.pong()
+				continue
+			if raw_message.type != WSMsgType.text:
+				self.log("Receive", f"A message of an unprocessed type was received. [{raw_message.type}]")
+				continue
+			try:data = loads(raw_message.data)
+			except JSONDecodeError:
+				self.log("Receive", f"An unreadable message was received")
+				continue
+			self.log("Receive", f"Message type {data['t']} received")
+			if self.whitelist:
+				if data.get('o',{}).get("ndcId") not in self.whitelist:
+					self.log("Whitelist", f"{data.get('o',{}).get('ndcId')} not in whitelist")
+					return
+			await self.call(data)
+		self.log("ConnectionError", f"Connection lost")
 
 	async def send(self, data):
-		if self.debug:
-			print(f"[socket][send] Sending Data : {data}")
-		if not self.connection:
-			if self.debug:
-				print(f"[socket][send][error] Socket not started !")
-				return
-			raise SocketNotStarted()
+		self.log("Send", f"Sending Data : {data}")
+		if not self.connection:raise SocketNotStarted()
 		await self.connection.send_str(data)
 
 	async def send_action(self, message_type: int, body: dict):
@@ -98,10 +117,29 @@ class SocketHandler:
 				"o": body,
 			}))
 
-
 	async def connection_support(self):
 		while True:
+			await sleep(self.ping_time)
 			await self.send_action(116, {"threadChannelUserInfoList": []})
+
+
+
+	async def online_loop(self):
+		while True:
+			for com in self.online_list:
+				await self.send_action(message_type=304, body={
+					"actions": ["Browsing"],
+					"target":f"ndc://x{com}/",
+					"ndcId":com
+				})
+				await sleep(1.5)
+			await sleep(self.ping_time)
+
+
+
+	async def vc_loop(self, comId: int, chatId: str, joinType: str):
+		while chatId in self.active_live_chats:
+			await self.join_live_chat(chatId=chatId, comId=comId, as_viewer=joinType)
 			await sleep(self.ping_time)
 
 

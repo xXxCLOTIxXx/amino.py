@@ -7,7 +7,7 @@ from amino.helpers.generators import generate_deviceId, sid_to_uid
 from .socket import SocketHandler, Callbacks
 
 from aiohttp import ClientSession
-from asyncio import get_event_loop
+from asyncio import get_event_loop, create_task
 from json import dumps
 from time import time as timestamp
 
@@ -15,10 +15,10 @@ from time import time as timestamp
 class Client(AsyncRequester, SocketHandler, Callbacks):
 	profile = profile()
 
-	def __init__(self, deviceId: str = None, auto_device: bool = False, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", socket_enabled: bool = True, socket_debug: bool = False, socket_whitelist_communities: list = None, socket_old_message_mode: bool = False, proxies: dict = None, certificate_path = None):
+	def __init__(self, deviceId: str = None, auto_device: bool = False, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", socket_enabled: bool = True, socket_debug: bool = False, socket_whitelist_communities: list = None, proxies: dict = None, certificate_path = None):
 		AsyncRequester.__init__(self, session=ClientSession(), proxies=proxies, verify=certificate_path)
 		if socket_enabled:
-			SocketHandler.__init__(self, old_message_mode=socket_old_message_mode, whitelist_communities=socket_whitelist_communities, debug=socket_debug)
+			SocketHandler.__init__(self, whitelist_communities=socket_whitelist_communities, debug=socket_debug)
 			Callbacks.__init__(self)
 		self.socket_enabled=socket_enabled
 		self.device_id = deviceId if deviceId else generate_deviceId()
@@ -73,3 +73,95 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 		self.profile = profile(await response.json())
 		if self.socket_enabled:await self.connect()
 		return self.profile
+
+
+
+#SOCKET=============================
+
+
+	def online(self, comId: int):
+		self.online_list.add(comId)
+
+	def offline(self, comId: int):
+		try:self.online_list.remove(comId)
+		except KeyError:pass
+
+
+	async def typing_start(self, chatId: str, comId: int = None):
+
+		data = {
+			"actions": ["Typing"],
+			"threadId": chatId,
+			"target": f"ndc://x{comId}/chat-thread/{chatId}" if comId else f"ndc://x0/chat-thread/{chatId}",
+			"params": {"threadType": 2}
+		}
+		if comId:data["ndcId"]=comId
+		await self.send_action(message_type=304, body=data)
+
+
+
+	async def typing_end(self, chatId: str, comId: int = None):
+
+		data = {
+			"actions": ["Typing"],
+			"threadId": chatId,
+			"target": f"ndc://x{comId}/chat-thread/{chatId}" if comId else f"ndc://x0/chat-thread/{chatId}",
+			"params": {"threadType": 2}
+		}
+		if comId:data["ndcId"]=comId
+		await self.send_action(message_type=306, body=data)
+
+
+	async def recording_start(self, chatId: str, comId: int = None):
+
+		data = {
+			"actions": ["Recording"],
+			"threadId": chatId,
+			"target": f"ndc://x{comId}/chat-thread/{chatId}" if comId else f"ndc://x0/chat-thread/{chatId}",
+			"params": {"threadType": 2}
+		}
+		if comId:data["ndcId"]=comId
+		await self.send_action(message_type=304, body=data)
+
+	async def recording_end(self, chatId: str, comId: int = None):
+
+		data = {
+			"actions": ["Recording"],
+			"threadId": chatId,
+			"target": f"ndc://x{comId}/chat-thread/{chatId}" if comId else f"ndc://x0/chat-thread/{chatId}",
+			"params": {"threadType": 2}
+		}
+		if comId:data["ndcId"]=comId
+		await self.send_action(message_type=306, body=data)
+
+
+	async def join_live_chat(self, chatId: str, comId: int = None, as_viewer: bool = False):
+
+		data = {
+			"threadId": chatId,
+			"joinRole": 2 if as_viewer else 1,
+		}
+		if comId:data["ndcId"]=int(comId)
+		await self.send_action(message_type=112, body=data)
+
+
+
+	async def start_vc(self, chatId: str, comId: int = None, join_as_viewer: bool = False):
+		await self.join_live_chat(chatId=chatId, comId=comId, as_viewer=join_as_viewer)
+		data = {
+			"threadId": chatId,
+			"channelType": 1
+		}
+		if comId:data["ndcId"]=int(comId)
+		await self.send_action(message_type=108, body=data)
+
+		self.active_live_chats.append(chatId)
+		create_task(self.vc_loop(comId, chatId, join_as_viewer))
+
+	async def end_vc(self, chatId: str, comId: int = None):
+		await self.join_live_chat(chatId=chatId, comId=comId, as_viewer=True)
+		self.leave_from_live_chat(chatId)
+
+	def leave_from_live_chat(self, chatId: str):
+		if chatId in self.active_live_chats:
+			self.active_live_chats.remove(chatId)
