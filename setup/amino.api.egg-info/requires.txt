@@ -1,0 +1,6 @@
+requests
+aiohttp
+websocket-client==1.3.1
+websockets
+ujson
+pydantic

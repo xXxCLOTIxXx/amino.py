@@ -58,7 +58,9 @@ class Client(SocketHandler, Requester, Callbacks):
 		if set_random_user_agent is True:deviceId = generate_user_agent()
 		if user_agent: self._user_agent=user_agent
 		if deviceId:self.device_id = deviceId
-		if deviceId or user_agent:return (deviceId, user_agent)
+		if deviceId and user_agent:return (deviceId, user_agent)
+		if deviceId: return self.deviceId
+		if user_agent: return self._user_agent
 
 
 #ACCOUNT=============================
@@ -552,13 +554,6 @@ class Client(SocketHandler, Requester, Callbacks):
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/community/joined?v=1&start={start}&size={size}", headers=self.get_headers()).json()
 		return response
-
-
-	def my_managed_communities(self, start: int = 0, size: int = 25):
-
-		response = self.make_request(method="GET", endpoint=f"/g/s/community/managed?start={start}&size={size}", headers=self.get_headers())
-		return response.json()["communityList"]
-
 
 	def get_public_communities(self, language: str = None, size: int = 25) -> dict:
 

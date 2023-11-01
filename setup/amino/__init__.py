@@ -15,7 +15,7 @@ __title__ = 'amino.api'
 __author__ = 'Xsarz'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2023-2024 Xsarz'
-__version__ = '0.2.2.8'
+__version__ = '0.2.2.7'
 try:__newest__ = loads(get("https://pypi.org/pypi/amino.api/json").text)["info"]["version"]
 except:__newest__ = __version__
 

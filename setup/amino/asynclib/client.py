@@ -56,7 +56,10 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 		if set_random_user_agent is True:deviceId = generate_user_agent()
 		if user_agent: self._user_agent=user_agent
 		if deviceId:self.device_id = deviceId
-		if deviceId or user_agent:return (deviceId, user_agent)
+		if deviceId and user_agent:return (deviceId, user_agent)
+		if deviceId: return self.deviceId
+		if user_agent: return self._user_agent
+
 
 
 #ACCOUNT=============================

@@ -96,18 +96,6 @@ class CommunityClient(Client):
 		return response.status_code
 
 
-	def apply_avatar_frame(self, avatarId: str, applyToAll: bool = True) -> int:
-
-
-		data = dumps({"frameId": avatarId,
-				"applyToAll": 1 if applyToAll is True else 0,
-				"timestamp": int(timestamp() * 1000)
-				})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/avatar-frame/apply", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
 	def check_notifications(self) -> int:
 
 		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/notification/checked", headers=self.get_headers())
@@ -135,14 +123,8 @@ class CommunityClient(Client):
 	def get_notices(self, start: int = 0, size: int = 25):
 
 
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/notice?type=usersV2&status=1&start={start}&size={size}", headers=self.get_headers())
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/notice?type=usersV2&status=1&start={start}&size={size}", headers=self.get_headers())
 		return response.json()["noticeList"]
-
-
-	def promotion(self, noticeId: str, type: str = "accept") -> int:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/notice/{noticeId}/{type}", headers=self.get_headers())
-		return response.status_code
 
 
 	def send_active_obj(self, startTime: int = None, endTime: int = None, optInAdsFlags: int = 2147483647, tz: int = None, timers: list = None, timestamp: int = int(timestamp() * 1000)) -> int: 
@@ -211,24 +193,6 @@ class CommunityClient(Client):
 
 		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/influencer/{userId}/subscribe", data=data, headers=self.get_headers(data=data))
 		return response.status_code
-
-
-	def purchase(self, objectId: str, objectType: int, aminoPlus: bool = True, autoRenew: bool = False) -> int:
-		data = dumps({'objectId': objectId,
-				'objectType': objectType,
-				'v': 1,
-				"timestamp": int(timestamp() * 1000),
-				"paymentContext": {
-					'discountStatus': 1 if aminoPlus is True else 0,
-					'discountValue': 1,
-					'isAutoRenew': autoRenew
-					}
-				})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/store/purchase", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
 
 #USERS=============================
 
@@ -329,17 +293,6 @@ class CommunityClient(Client):
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile/{userId}?action=visit", headers=self.get_headers())
 		return response.status_code
 
-	def get_leaderboard_info(self, type: str, start: int = 0, size: int = 25) -> dict:
-
-		if "24" in type or "hour" in type: rankingType=1
-		elif "7" in type or "day" in type: rankingType=2
-		elif "rep" in type: rankingType=3
-		elif "check" in type: rankingType=4
-		elif "quiz" in type: rankingType=5
-		else: raise exceptions.WrongType(type)
-
-		response = self.make_request(method="GET", endpoint=f"/g/s-x{self.comId}/community/leaderboard?rankingType={rankingType}&start={start}&size={size}", headers=self.get_headers())
-		return response.json()["userProfileList"]
 
 
 	def get_blocked_users(self, start: int = 0, size: int = 25) -> dict:
@@ -642,41 +595,6 @@ class CommunityClient(Client):
 
 
 #STAFF=============================
-
-	def edit_community(self, name: str = None, description: str = None, aminoId: str = None, primaryLanguage: str = None, themePackUrl: str = None) -> int:
-		data = {"timestamp": int(timestamp() * 1000)}
-
-		if name is not None: data["name"] = name
-		if description is not None: data["content"] = description
-		if aminoId is not None: data["endpoint"] = aminoId
-		if primaryLanguage is not None: data["primaryLanguage"] = primaryLanguage
-		if themePackUrl is not None: data["themePackUrl"] = themePackUrl
-		data = dumps(data)
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/settings", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-	
-	def upload_themepack(self, file: BinaryIO) -> dict:
-
-		response = self.make_request(method="POST", endpoint=f"/s/media/upload/target/community-theme-pack", data=file.read(), headers=self.get_headers(data=file.read()))
-		return response.json()
-
-
-	def get_moderation_history(self, userId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, size: int = 25):
-
-
-		if userId: part=f"?objectId={userId}&objectType=0&"
-		elif blogId: part=f"?objectId={blogId}&objectType=1&"
-		elif quizId: part=f"?objectId={quizId}&objectType=1&"
-		elif wikiId: part=f"?objectId={wikiId}&objectType=2&"
-		elif fileId: part=f"?objectId={fileId}&objectType=109&"
-		else: part=f"?"
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/admin/operation{part}pagingType=t&size={size}", headers=self.get_headers())
-		return response.json()["adminLogList"]
-
-
-
 	def get_invite_codes(self, status: str = "normal", start: int = 0, size: int = 25) -> dict:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s-x{self.comId}/community/invitation?status={status}&start={start}&size={size}", headers=self.get_headers())
@@ -699,162 +617,4 @@ class CommunityClient(Client):
 		return response.status_code
 
 
-	def get_join_requests(self, start: int = 0, size: int = 25) -> dict:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/community/membership-request?status=pending&start={start}&size={size}", headers=self.get_headers())
-		return response.status_code
-
-	def accept_join_request(self, userId: str) -> int:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/membership-request/{userId}/accept", data=dumps({}), headers=self.get_headers(data=dumps({})))
-		return response.status_code
-
-	def reject_join_request(self, userId: str):
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/membership-request/{userId}/reject", data=dumps({}), headers=self.get_headers(data=dumps({})))
-		return response.status_code
-
-
-	def edit_titles(self, userId: str, titles: list) -> dict:
-
-		_titles = list()
-		for titles, colors in titles:
-			_titles.append({"title": titles, "color": colors})
-
-		data = dumps({
-			"adminOpName": 207,
-			"adminOpValue": {
-				"titles": _titles
-			},
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/user-profile/{userId}/admin", data=data, headers=self.get_headers(data=data))
-		return response.json()
-
-
-	def ban(self, userId: str, reason: str, banType: int = None) -> dict:
-
-		data = dumps({
-			"reasonType": banType,
-			"note": {
-				"content": reason
-			},
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/user-profile/{userId}/ban", data=data, headers=self.get_headers(data=data))
-		return response.json()
-
-
-	def unban(self, userId: str, reason: str) -> dict:
-		data = dumps({
-			"note": {
-				"content": reason
-			},
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/user-profile/{userId}/unban", data=data, headers=self.get_headers(data=data))
-		return response.json()
-
-
-	def hide(self, userId: str = None, chatId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, reason: str = None) -> dict:
-
-		data = {
-			"adminOpNote": {
-				"content": reason
-			},
-			"timestamp": int(timestamp() * 1000)
-		}
-		if userId:data["adminOpName"] = 18
-		else:
-			data["adminOpName"] = 110
-			data["adminOpValue"] = 9
-		data = dumps(data)		
-
-		if userId:part = f"user-profile/{userId}"
-		elif blogId or quizId:part = f"blog/{blogId or quizId}"
-		elif wikiId:part = f"item/{wikiId}"
-		elif chatId:part = f"chat/thread/{chatId}"
-		elif fileId:part = f"shared-folder/files/{fileId}"
-		else: raise exceptions.SpecifyType()
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/{part}/admin", data=data, headers=self.get_headers(data=data))
-		return response.json()
-
-
-	def unhide(self, userId: str = None, chatId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, reason: str = None) -> dict:
-
-		data = {
-			"adminOpNote": {
-				"content": reason
-			},
-			"timestamp": int(timestamp() * 1000)
-		}
-		if userId:data["adminOpName"] = 19
-		else:
-			data["adminOpName"] = 110
-			data["adminOpValue"] = 0
-		data = dumps(data)		
-
-		if userId:part = f"user-profile/{userId}"
-		elif blogId or quizId:part = f"blog/{blogId or quizId}"
-		elif wikiId:part = f"item/{wikiId}"
-		elif chatId:part = f"chat/thread/{chatId}"
-		elif fileId:part = f"shared-folder/files/{fileId}"
-		else: raise exceptions.SpecifyType()
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/{part}/admin", data=data, headers=self.get_headers(data=data))
-		return response.json()
-
-
-	def increase_rank(self, userId: str, rank: str) -> int:
-		rank = rank.lower().replace("agent", "transfer-agent")
-		if rank.lower() not in ("transfer-agent", "leader", "curator"):raise exceptions.WrongType(rank)
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/user-profile/{userId}/{rank}", headers=self.get_headers())
-		return response.status_code
-
-	def add_influencer(self, userId: str, monthlyFee: int) -> int:
-		data = dumps({
-			"monthlyFee": monthlyFee,
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/influencer/{userId}", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-	def remove_influencer(self, userId: str) -> int:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/influencer/{userId}", headers=self.get_headers())
-		return response.status_code
-
-
-	def delete_community(self, email: str, password: str, verificationCode: str) -> int:
-
-		deviceId = self.deviceId
-		data = dumps({
-			"secret": f"0 {password}",
-			"validationContext": {
-				"data": {
-					"code": verificationCode
-				},
-				"type": 1,
-				"identity": email
-			},
-			"deviceID": deviceId
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/g/s-x{self.comId}/community/delete-request", data=data, headers=self.get_headers(data=data, deviceId=deviceId))
-		return response.status_code
-
-
-
-
 #OTHER=============================
-
-	def get_live_layer(self) -> dict:
-
-		response = self.make_request(method="GET", endpoint=f"/s/live-layer/homepage?v=2", headers=self.get_headers())
-		return response.json()["liveLayerList"]
