@@ -2,13 +2,12 @@ from typing import Union
 from hmac import new
 from hashlib import sha1
 from base64 import b64encode, urlsafe_b64decode
-from json import loads, load, dump
-from json.decoder import JSONDecodeError
+from json import loads
 from os import urandom
 from time import time as timestamp
 from time import strftime, gmtime
-from uuid import uuid4
-from random import randrange
+from random import randint
+
 
 
 
@@ -26,6 +25,14 @@ def generate_deviceId():
 	ur = PREFIX + (urandom(20))
 	mac = new(DEVICE_KEY, ur, sha1)
 	return f"{ur.hex()}{mac.hexdigest()}".upper()
+
+
+def generate_user_agent():
+	imodel = randint(6, 15)
+	if imodel == 9:imodel=8
+	return f"Apple iPhone{imodel},{randint(1,3)} iOS v15.5 Main/3.12.2"
+
+
 
 
 def timezone():

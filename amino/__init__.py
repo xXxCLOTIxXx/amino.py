@@ -1,5 +1,5 @@
 from .client import Client
-from .community_client import LocalClient
+from .community_client import CommunityClient
 from .full_client import FullClient
 from .helpers import generators, exceptions
 from . import asynclib
@@ -15,7 +15,7 @@ __title__ = 'amino.api'
 __author__ = 'Xsarz'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2023-2024 Xsarz'
-__version__ = '0.2.2.6'
+__version__ = '0.2.2.7'
 try:__newest__ = loads(get("https://pypi.org/pypi/amino.api/json").text)["info"]["version"]
 except:__newest__ = __version__
 

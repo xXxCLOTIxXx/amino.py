@@ -3,11 +3,11 @@ from amino.helpers.headers import headers, tapjoy, tapjoy_headers
 from amino.models.objects import profile
 from amino.models import objects
 from amino.helpers import exceptions
-from amino.helpers.generators import generate_deviceId, sid_to_uid
+from amino.helpers.generators import generate_deviceId, sid_to_uid, generate_user_agent
 from .socket import SocketHandler, Callbacks
 
 from aiohttp import ClientSession
-from asyncio import get_event_loop, create_task
+from asyncio import get_event_loop, create_task, new_event_loop
 from json import dumps
 from time import time as timestamp
 
@@ -15,7 +15,7 @@ from time import time as timestamp
 class Client(AsyncRequester, SocketHandler, Callbacks):
 	profile = profile()
 
-	def __init__(self, deviceId: str = None, auto_device: bool = False, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", socket_enabled: bool = True, socket_debug: bool = False, socket_whitelist_communities: list = None, proxies: dict = None, certificate_path = None):
+	def __init__(self, deviceId: str = None, auto_device: bool = False, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", auto_user_agent: bool = False, socket_enabled: bool = True, socket_debug: bool = False, socket_whitelist_communities: list = None, proxies: dict = None, certificate_path = None):
 		AsyncRequester.__init__(self, session=ClientSession(), proxies=proxies, verify=certificate_path)
 		if socket_enabled:
 			SocketHandler.__init__(self, whitelist_communities=socket_whitelist_communities, debug=socket_debug)
@@ -23,7 +23,8 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 		self.socket_enabled=socket_enabled
 		self.device_id = deviceId if deviceId else generate_deviceId()
 		self.auto_device = auto_device
-		self.user_agent=user_agent
+		self.auto_user_agent = auto_user_agent
+		self._user_agent=user_agent
 		self.language=language
 
 	def __del__(self):
@@ -41,18 +42,23 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 	def deviceId(self) -> str:
 		return generate_deviceId() if self.auto_device else self.device_id
 
+	@property
+	def user_agent(self) -> str:
+		return generate_user_agent() if self.auto_user_agent else self._user_agent
+
 	def get_headers(self, deviceId: str = None, data = None, content_type: str = None, sid: str = None, user_agent = None, language: str = None) -> dict:
 		return headers(deviceId=deviceId if deviceId else self.deviceId, data=data, content_type=content_type, sid=sid, user_agent=user_agent if user_agent else self.user_agent, language=language if language else self.language)
 
-	def set_device(self, deviceId: str = None, auto_device: bool = None, set_random_device: bool = False, user_agent: str = None) -> str:
+	def set_device(self, deviceId: str = None, auto_device: bool = None, set_random_device: bool = False, user_agent: str = None, set_random_user_agent: bool = False) -> str:
 		if auto_device is True: self.auto_device = True
 		if auto_device is False: self.auto_device = False
 		if set_random_device is True:deviceId = generate_deviceId()
-		if user_agent: self.user_agent=user_agent
+		if set_random_user_agent is True:deviceId = generate_user_agent()
+		if user_agent: self._user_agent=user_agent
 		if deviceId:self.device_id = deviceId
 		if deviceId and user_agent:return (deviceId, user_agent)
 		if deviceId: return self.deviceId
-		if user_agent: return self.user_agent
+		if user_agent: return self._user_agent
 
 
 

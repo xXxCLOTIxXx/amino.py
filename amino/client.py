@@ -4,7 +4,7 @@ from .helpers.headers import headers, tapjoy, tapjoy_headers
 from .models.objects import profile
 from .models import objects
 from .helpers import exceptions
-from .helpers.generators import generate_deviceId, sid_to_uid
+from .helpers.generators import generate_deviceId, generate_user_agent, sid_to_uid
 
 from requests import Session
 from time import time as timestamp
@@ -26,7 +26,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	profile = profile()
 	active_live_chats = list()
 
-	def __init__(self, deviceId: str = None, auto_device: bool = False, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", socket_enabled: bool = True, socket_debug: bool = False, socket_trace: bool = False, socket_whitelist_communities: list = None, socket_old_message_mode: bool = False, proxies: dict = None, certificate_path = None):
+	def __init__(self, deviceId: str = None, auto_device: bool = False, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", auto_user_agent: bool = False, socket_enabled: bool = True, socket_debug: bool = False, socket_trace: bool = False, socket_whitelist_communities: list = None, socket_old_message_mode: bool = False, proxies: dict = None, certificate_path = None):
 		Requester.__init__(self, session=Session(), proxies=proxies, verify=certificate_path)
 		self.socket_enabled=socket_enabled
 		if socket_enabled:
@@ -34,7 +34,8 @@ class Client(SocketHandler, Requester, Callbacks):
 			Callbacks.__init__(self)
 		self.device_id = deviceId if deviceId else generate_deviceId()
 		self.auto_device = auto_device
-		self.user_agent=user_agent
+		self.auto_user_agent = auto_user_agent
+		self._user_agent=user_agent
 		self.language=language
 
 
@@ -42,18 +43,24 @@ class Client(SocketHandler, Requester, Callbacks):
 	def deviceId(self) -> str:
 		return generate_deviceId() if self.auto_device else self.device_id
 
+	@property
+	def user_agent(self) -> str:
+		return generate_user_agent() if self.auto_user_agent else self._user_agent
+
+
 	def get_headers(self, deviceId: str = None, data = None, content_type: str = None, sid: str = None, user_agent = None, language: str = None) -> dict:
 		return headers(deviceId=deviceId if deviceId else self.deviceId, data=data, content_type=content_type, sid=sid, user_agent=user_agent if user_agent else self.user_agent, language=language if language else self.language)
 
-	def set_device(self, deviceId: str = None, auto_device: bool = None, set_random_device: bool = False, user_agent: str = None) -> str:
+	def set_device(self, deviceId: str = None, auto_device: bool = None, set_random_device: bool = False, user_agent: str = None, set_random_user_agent: bool = False) -> str:
 		if auto_device is True: self.auto_device = True
 		if auto_device is False: self.auto_device = False
 		if set_random_device is True:deviceId = generate_deviceId()
-		if user_agent: self.user_agent=user_agent
+		if set_random_user_agent is True:deviceId = generate_user_agent()
+		if user_agent: self._user_agent=user_agent
 		if deviceId:self.device_id = deviceId
 		if deviceId and user_agent:return (deviceId, user_agent)
 		if deviceId: return self.deviceId
-		if user_agent: return self.user_agent
+		if user_agent: return self._user_agent
 
 
 #ACCOUNT=============================
@@ -437,7 +444,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	
 	def link_identify(self, link: str) -> dict:
 
-		response = self.make_request(method="GET", endpoint=f"/g/s/community/link-identify?q=http%3A%2F%2Faminoapps.com%2Finvite%2F{code}", headers=self.get_headers()).json()
+		response = self.make_request(method="GET", endpoint=f"/g/s/community/link-identify?q=http%3A%2F%2Faminoapps.com%2Finvite%2F{link}", headers=self.get_headers()).json()
 		return response
 
 	def get_from_deviceId(self, deviceId: str) -> dict:
@@ -448,7 +455,7 @@ class Client(SocketHandler, Requester, Callbacks):
 
 	def get_from_Id(self, objectId: str, objectType: int, comId: str = None):
 
-		data = json.dumps({
+		data = dumps({
 			"objectId": objectId,
 			"targetCode": 1,
 			"objectType": objectType,
@@ -638,7 +645,7 @@ class Client(SocketHandler, Requester, Callbacks):
 
 		if isinstance(userId, str): userIds = [userId]
 		elif isinstance(userId, list): userIds = userId
-		else: raise exceptions.WrongType()
+		else: raise exceptions.WrongType(type(userId))
 
 		data = {
 			"title": title,
@@ -716,13 +723,20 @@ class Client(SocketHandler, Requester, Callbacks):
 		response = self.make_request(method="POST", endpoint=f"/g/s/chat/thread/{chatId}/member/invite", data=data, headers=self.get_headers(data=data))
 		return response.status_code
 
-
 	def kick(self, userId: str, chatId: str, allowRejoin: bool = True) -> int:
 
-		response = self.make_request(method="DELETE", endpoint=f"/g/s/chat/thread/{chatId}/member/{userId}?allowRejoin={1 if allowRejoin else 0}", data=data, headers=self.get_headers(data=data))
+		response = self.make_request(method="DELETE", endpoint=f"/g/s/chat/thread/{chatId}/member/{userId}?allowRejoin={1 if allowRejoin else 0}", headers=self.get_headers())
 		return response.status_code
 
+	def transfer_host(self, chatId: str, userIds: list) -> int:
+		data = dumps({
+			"uidList": userIds,
+			"timestamp": int(timestamp() * 1000)
+		})
 
+
+		response = self.make_request(method="POST", endpoint=f"/g/s/chat/thread/{chatId}/transfer-organizer", data=dumps({}), headers=self.get_headers(data=dumps({})))
+		return response.status_code
 
 	def accept_host(self, chatId: str, requestId: str) -> int:
 
@@ -759,7 +773,7 @@ class Client(SocketHandler, Requester, Callbacks):
 
 	def send_message(self, chatId: str, message: str = None, messageType: int = 0, file: BinaryIO = None, fileType: str = None, replyTo: str = None, mentionUserIds: list = None, stickerId: str = None, embedId: str = None, embedType: int = None, embedLink: str = None, embedTitle: str = None, embedContent: str = None, embedImage: BinaryIO = None):
 
-		if message is not None and file is None:
+		if message is not None and file is None and mentionUserIds is not None:
 			message = message.replace("<@", "‎‏").replace("@>", "‬‭")
 
 		mentions = []
@@ -811,7 +825,7 @@ class Client(SocketHandler, Requester, Callbacks):
 
 			else: raise exceptions.SpecifyType
 
-			data["mediaUploadValue"] = base64.b64encode(file.read()).decode()
+			data["mediaUploadValue"] = b64encode(file.read()).decode()
 
 		data = dumps(data)
 		response = self.make_request(method="POST", endpoint=f"/g/s/chat/thread/{chatId}/message", data=data, headers=self.get_headers(data=data))
@@ -821,11 +835,11 @@ class Client(SocketHandler, Requester, Callbacks):
 
 		data = {
 			"adminOpName": 102,
-			"adminOpNote": {"content": reason},
 			"timestamp": int(timestamp() * 1000)
 		}
-
+		if asStaff and reason:data["adminOpNote"] = {"content": reason}
 		data = dumps(data)
+
 		if not asStaff:response = self.make_request(method="DELETE", endpoint=f"/g/s/chat/thread/{chatId}/message/{messageId}", headers=self.get_headers())
 		else:response = self.make_request(method="POST", endpoint=f"/g/s/chat/thread/{chatId}/message/{messageId}/admin", data=data, headers=self.get_headers(data=data))
 		return response.status_code
@@ -856,7 +870,7 @@ class Client(SocketHandler, Requester, Callbacks):
 		else: raise exceptions.SpecifyType
 
 		data = dumps(data)
-		response = self.make_request(method="POST", endpoint=f"/g/s/{'g-flag' if isGuest else 'flag'}", data=data, headers=self.get_headers(data=data))
+		response = self.make_request(method="POST", endpoint=f"/g/s/{'g-flag' if asGuest else 'flag'}", data=data, headers=self.get_headers(data=data))
 		return response.status_code
 
 

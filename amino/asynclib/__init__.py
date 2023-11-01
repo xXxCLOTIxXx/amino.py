@@ -1,3 +1,3 @@
 from .full_client import FullClient
-from .community_client import LocalClient
+from .community_client import CommunityClient
 from .client import Client

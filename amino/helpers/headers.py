@@ -3,7 +3,7 @@ from uuid import uuid4
 
 def headers(data = None, content_type = None, sid: str = None, deviceId: str = None, user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", language: str = "en"):
 	headers = {
-		"NDCDEVICEID": deviceId if deviceId else self.generate_deviceId(),
+		"NDCDEVICEID": deviceId if deviceId else generate_deviceId(),
 		"NDCLANG": language.lower(),
 		"Accept-Language": f"{language.lower()}-{language.upper()}",
 		"SMDEVICEID": "20230109055041eecd2b9dd8439235afe4522cb5dacd26011dba6bbfeeb752", 

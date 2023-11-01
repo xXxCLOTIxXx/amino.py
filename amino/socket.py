@@ -1,5 +1,5 @@
 from time import sleep, time
-from json import dumps, loads
+from json import dumps, loads, JSONDecodeError
 from websocket import WebSocketApp, enableTrace
 from threading import Thread
 from random import randint
@@ -77,7 +77,7 @@ class SocketHandler:
 			self.socket.close()
 			self.run = False
 			self.log("Disconnect", f"Socket closed")
-		except Exception as closeError:
+		except Exception as e:
 			self.log("CloseError", f"Error while closing Socket : {e}")
 
 
