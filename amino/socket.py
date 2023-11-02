@@ -22,10 +22,10 @@ from .helpers.types import (
 class SocketHandler:
 	socket_url = f"wss://ws{randint(1, 4)}.narvii.com"
 	socket = None
-	ping_time = 20
+	ping_time = 1.5
 	socket_thread = None
 	old_message = list()
-	online_list = set()
+	actions_list = list()
 	active_live_chats = list()
 	run = True
 
@@ -35,7 +35,7 @@ class SocketHandler:
 		self.debug = debug
 		self.old_message_mode = old_message_mode
 		self.whitelist = whitelist_communities
-		Thread(target=self.online_loop).start()
+		Thread(target=self.actions_loop).start()
 		if old_message_mode:
 			Thread(target=self.old_message_handler).start()
 
@@ -90,16 +90,19 @@ class SocketHandler:
 
 	def send_action(self, message_type: int, body: dict):
 
-		body["id"] = str(randint(1, 1000000))
-		self.send(dumps({
+		data = {
 				"t": message_type,
 				"o": body,
-			}))
+			}
+		data["id"] = str(randint(1, 1000000))
+		self.send(dumps(data))
 
 	def send(self, data):
 		self.log("Send", f"Sending Data : {data}")
 		if not self.socket_thread:raise SocketNotStarted()
-		self.socket.send(data)
+		try:self.socket.send(data)
+		except Exception as e:
+			self.self.log("SendError", f"Error while sending data : {e}")
 
 
 
@@ -128,18 +131,14 @@ class SocketHandler:
 
 
 
-	def online_loop(self):
+	def actions_loop(self):
 		while self.run:
-			for com in self.online_list:
-				self.send_action(message_type=304, body={
-					"actions": ["Browsing"],
-					"target":f"ndc://x{com}/",
-					"ndcId":com
-				})
+			temp = self.actions_list
+			for data in temp:
+				try:self.send_action(message_type=304, body=data)
+				except:pass
 				sleep(1.5)
 			sleep(self.ping_time)
-
-
 
 	def vc_loop(self, comId: int, chatId: str, joinType: str):
 		while chatId in self.active_live_chats and self.run:

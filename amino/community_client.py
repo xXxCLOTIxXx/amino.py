@@ -4,8 +4,7 @@ from .helpers import exceptions
 from .client import Client
 from .helpers.generators import timezone
 
-from json import dumps
-import base64
+from json import dumps, loads
 
 from uuid import UUID
 from os import urandom
@@ -16,8 +15,42 @@ from json_minify import json_minify
 from base64 import b64encode
 
 class CommunityClient(Client):
-	def __init__(self, comId: int = None, community_link: str = None, aminoId: str = None, profile: profile = None, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", deviceId: str = None, auto_device: bool = False, socket_enabled: bool = True, socket_debug: bool = False, socket_trace: bool = False, socket_whitelist_communities: list = None, socket_old_message_mode: bool = False, proxies: dict = None, certificate_path = None):
-		Client.__init__(self, language=language, user_agent=user_agent, deviceId=deviceId, auto_device=auto_device, socket_enabled=socket_enabled, socket_debug=socket_debug, socket_trace=socket_trace, socket_whitelist_communities=socket_whitelist_communities, socket_old_message_mode=socket_old_message_mode, proxies=proxies, certificate_path=certificate_path)
+
+	"""
+	***Community params***
+		[!] Use any of the options to define a community
+		[!!] One of the parameters is required
+
+		int *comId* - Community ID
+		str *community_link* - Community link
+		str *aminoId* - community amino ID
+
+	***account params***
+		[!] Specify the profile parameter or after initializing the CommunityClient, log in to your account
+		[!] CommunityClient(comId=123456).login(email="email", password="password")
+
+		objects.profile *profile* - account profile (Client.login(email="email", password="password") -> objects.profile)
+
+	***server settings***
+		str *language* - Language for response from the server (Default: "en")
+		str *user_agent* - user agent (Default: "Apple iPhone12,1 iOS v15.5 Main/3.12.2")
+		bool *auto_user_agent* - Does each request generate a new user agent? (Default: False)
+		str *deviceId* - device id (Default: None)
+		bool *auto_device* - Does each request generate a new deviceId? (Default: False)
+		str *certificate_path* - path to certificates (Default: None)
+		dict *proxies* - proxies (Default: None)
+
+	***socket settings***
+		bool *socket_enabled* - Launch socket? (Default: True)
+		bool *socket_debug* - Track the stages of a socket's operation? (Default: False)
+		bool *socket_trace* - socket trace (Default: False)
+		list *socket_whitelist_communities* - By passing a list of communities the socket will respond only to them (Default: None),
+		bool *socket_old_message_mode* - The socket first writes all messages in a separate thread, and basically takes them from a list (Default: False)
+
+	"""
+
+	def __init__(self, comId: int = None, community_link: str = None, aminoId: str = None, profile: profile = None, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", auto_user_agent:  bool = False, deviceId: str = None, auto_device: bool = False, socket_enabled: bool = True, socket_debug: bool = False, socket_trace: bool = False, socket_whitelist_communities: list = None, socket_old_message_mode: bool = False, proxies: dict = None, certificate_path = None):
+		Client.__init__(self, language=language, user_agent=user_agent, auto_user_agent=auto_user_agent, deviceId=deviceId, auto_device=auto_device, socket_enabled=socket_enabled, socket_debug=socket_debug, socket_trace=socket_trace, socket_whitelist_communities=socket_whitelist_communities, socket_old_message_mode=socket_old_message_mode, proxies=proxies, certificate_path=certificate_path)
 		if profile:self.profile=profile
 
 		if comId:
@@ -228,6 +261,42 @@ class CommunityClient(Client):
 		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/store/purchase", data=data, headers=self.get_headers(data=data))
 		return response.status_code
 
+	def get_store_chat_bubbles(self, start: int = 0, size: int = 25) -> dict:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/store/items?sectionGroupId=chat-bubble&start={start}&size={size}", headers=self.get_headers()).json()
+		del response["api:message"], response["api:statuscode"], response["api:duration"], response["api:timestamp"]
+		return response
+
+	def get_store_stickers(self, start: int = 0, size: int = 25) -> dict:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/store/items?sectionGroupId=sticker&start={start}&size={size}", headers=self.get_headers()).json()
+		del response["api:message"], response["api:statuscode"], response["api:duration"], response["api:timestamp"]
+		return response
+
+
+
+#STICKERS=============================
+
+	def get_sticker_pack_info(self, sticker_pack_id: str) -> dict:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/sticker-collection/{sticker_pack_id}?includeStickers=true", headers=self.get_headers())
+		return response.json()["stickerCollection"]
+
+	def get_sticker_packs(self) -> dict:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/sticker-collection?includeStickers=false&type=my-active-collection", headers=self.get_headers())
+		return response.json()["stickerCollection"]
+
+	def get_community_stickers(self) -> dict:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/sticker-collection?type=community-shared", headers=self.get_headers())
+		return response.json()
+
+	def get_sticker_collection(self, collectionId: str) -> dict:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/sticker-collection/{collectionId}?includeStickers=true", headers=self.get_headers())
+		return response.json()["stickerCollection"]
+
 
 
 #USERS=============================
@@ -279,7 +348,7 @@ class CommunityClient(Client):
 		return response.json()
 
 
-	def get_user_achievements(self, userId: str):
+	def get_user_achievements(self, userId: str) -> dict:
 	
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile/{userId}/achievements", headers=self.get_headers())
 		return response.json()["achievements"]
@@ -353,12 +422,12 @@ class CommunityClient(Client):
 		return response.json()["blockerUidList"]
 
 
-	def search_users(self, nickname: str, start: int = 0, size: int = 25):
+	def search_users(self, nickname: str, start: int = 0, size: int = 25) -> dict:
 
 		response = self.make_request(method="GET", endpoint=f"{self.api}/s/user-profile?type=name&q={nickname}&start={start}&size={size}", headers=self.get_headers())
 		return response.json()["userProfileList"]
 
-	def get_tipped_users(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, chatId: str = None, start: int = 0, size: int = 25):
+	def get_tipped_users(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, chatId: str = None, start: int = 0, size: int = 25) -> dict:
 
 		if blogId or quizId:part=f"blog/{quizId if quizId else blogId}"
 		elif wikiId:part=f"item/{wikiId}"
@@ -369,7 +438,7 @@ class CommunityClient(Client):
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/{part}/tipping/tipped-users-summary?start={start}&size={size}", headers=self.get_headers())
 		return response.json()
 
-	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25):
+	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25) -> dict:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/member?start={start}&size={size}&type=default&cv=1.2", headers=self.get_headers())
 		return response.json()["memberList"]
@@ -639,6 +708,384 @@ class CommunityClient(Client):
 		return response.json()
 
 
+
+
+#BLOGS AND ECT=============================
+
+
+	def post_blog(self, title: str, content: str, imageList: list = None, captionList: list = None, categoriesList: list = None, backgroundColor: str = None, fansOnly: bool = False, extensions: dict = None, crash: bool = False) -> int:
+		mediaList = []
+
+		if captionList is not None and imageList is not None:
+			for image, caption in zip(imageList, captionList):
+				mediaList.append([100, self.upload_media(image, "image"), caption])
+
+		else:
+			if imageList is not None:
+				for image in imageList:
+					print(self.upload_media(image, "image"))
+					mediaList.append([100, self.upload_media(image, "image"), None])
+
+		data = {
+			"address": None,
+			"content": content,
+			"title": title,
+			"mediaList": mediaList,
+			"extensions": extensions,
+			"latitude": 0,
+			"longitude": 0,
+			"eventSource": "GlobalComposeMenu",
+			"timestamp": int(timestamp() * 1000)
+		}
+		if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
+		if backgroundColor: data["extensions"] = {"style": {"backgroundColor": backgroundColor}}
+		if categoriesList: data["taggedBlogCategoryIdList"] = categoriesList
+		data = dumps(data)
+		
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog", data=data, headers=self.get_headers(data=data))
+		return response.json()
+
+	def post_wiki(self, title: str, content: str, icon: str = None, imageList: list = None, keywords: str = None, backgroundColor: str = None, fansOnly: bool = False) -> int:
+		mediaList = []
+
+		for image in imageList:
+			mediaList.append([100, self.upload_media(image, "image"), None])
+
+		data = {
+			"label": title,
+			"content": content,
+			"mediaList": mediaList,
+			"eventSource": "GlobalComposeMenu",
+			"timestamp": int(timestamp() * 1000)
+		}
+		if icon: data["icon"] = icon
+		if keywords: data["keywords"] = keywords
+		if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
+		if backgroundColor: data["extensions"] = {"style": {"backgroundColor": backgroundColor}}
+		data = dumps(data)
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/item", data=data, headers=self.get_headers(data=data))
+		return response.json()
+
+
+	def edit_blog(self, blogId: str, title: str = None, content: str = None, imageList: list = None, categoriesList: list = None, backgroundColor: str = None, fansOnly: bool = False) -> int:
+		mediaList = []
+
+		for image in imageList:
+			mediaList.append([100, self.upload_media(image, "image"), None])
+
+		data = {
+			"address": None,
+			"mediaList": mediaList,
+			"latitude": 0,
+			"longitude": 0,
+			"eventSource": "PostDetailView",
+			"timestamp": int(timestamp() * 1000)
+		}
+		if title: data["title"] = title
+		if content: data["content"] = content
+		if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
+		if backgroundColor: data["extensions"] = {"style": {"backgroundColor": backgroundColor}}
+		if categoriesList: data["taggedBlogCategoryIdList"] = categoriesList
+		data = dumps(data)
+
+		response = self.make_request(method="POST", endpoint=f"/s/blog/{blogId}", data=data, headers=self.get_headers(data=data))
+		return response.json()
+
+
+	def delete_blog(self, blogId: str) -> int:
+
+		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/blog/{blogId}", headers=self.get_headers())
+		return response.json()
+
+
+	def delete_wiki(self, wikiId: str) -> int:
+
+		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/item/{wikiId}", headers=self.get_headers())
+		return response.json()
+
+	def repost_blog(self, content: str = None, blogId: str = None, wikiId: str = None) -> int:
+
+		if blogId is None and  wikiId is None: raise exceptions.SpecifyType()
+		data = dumps({
+			"content": content,
+			"refObjectId": blogId if blogId else wikiId,
+			"refObjectType": 1 if blogId else 2,
+			"type": 2,
+			"timestamp": int(timestamp() * 1000)
+		})
+
+		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/blog", data=data, headers=self.get_headers(data=data))
+		return response.json()
+
+
+	def flag(self, reason: str, flagType: int, userId: str = None, blogId: str = None, wikiId: str = None, asGuest: bool = False) -> int:
+
+		data = {
+			"flagType": flagType,
+			"message": reason,
+			"timestamp": int(timestamp() * 1000)
+		}
+		if userId:
+			data["objectId"] = userId
+			data["objectType"] = 0
+		elif blogId:
+			data["objectId"] = blogId
+			data["objectType"] = 1
+		elif wikiId:
+			data["objectId"] = wikiId
+			data["objectType"] = 2
+		else: raise exceptions.SpecifyType
+
+		data = dumps(data)
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/{'g-flag' if asGuest else 'flag'}", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+	def get_blog_info(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None) -> dict:
+
+
+		if fileId:part=f"shared-folder/files/{fileId}"
+		elif blogId or quizId:part=f"blog/{blogId}"
+		elif wikiId:part=f"item/{wikiId}"
+		else: raise exceptions.SpecifyType
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/{part}", headers=self.get_headers()).json()
+		return response.get("file", response)
+
+
+	def get_comments(self, userId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, sorting: str = "newest", start: int = 0, size: int = 25):
+
+		if sorting.lower() not in ("newest", "oldest", "vote"): raise exceptions.WrongType(sorting)
+		if fileId:part=f"shared-folder/files/{fileId}"
+		elif blogId or quizId:part=f"blog/{blogId}"
+		elif wikiId:part=f"item/{wikiId}"
+		elif userId:part=f"user-profile/{userId}"
+		else: raise exceptions.SpecifyType
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/{part}/comment?sort={sorting}&start={start}&size={size}", headers=self.get_headers())
+		return response.json()["commentList"]
+
+	def get_saved_blogs(self, start: int = 0, size: int = 25):
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/bookmark?start={start}&size={size}", headers=self.get_headers())
+		return response.json()["bookmarkList"]
+
+
+
+	def get_recent_blogs(self, pageToken: str = None, start: int = 0, size: int = 25):
+	
+		response = self.make_request(method="GET", endpoint=f"x{self.comId}/s/feed/blog-all?pagingType=t&{ f'pageToken={pageToken}' if pageToken else f'start={start}'}&size={size}", headers=self.get_headers())
+		return response.json()
+
+	def get_blog_categories(self, size: int = 25):
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog-category?size={size}", headers=self.get_headers())
+		return response.json()["blogCategoryList"]
+
+
+	def get_blogs_by_category(self, categoryId: str,start: int = 0, size: int = 25):
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog-category/{categoryId}/blog-list?start={start}&size={size}", headers=self.get_headers())
+		return response.json()["blogList"]
+
+	def get_recent_wiki_items(self, start: int = 0, size: int = 25):
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/item?type=catalog-all&start={start}&size={size}", headers=self.get_headers())
+		return response.json()["itemList"]
+
+	def get_wiki_categories(self, start: int = 0, size: int = 25):
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/item-category?start={start}&size={size}", headers=self.get_headers())
+		return response.json()["itemCategoryList"]
+
+
+	def get_wiki_category(self, categoryId: str, start: int = 0, size: int = 25):
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/item-category/{categoryId}?start={start}&size={size}", headers=self.get_headers())
+		return response.json()
+
+
+	def get_shared_folder_info(self):
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/shared-folder/stats", headers=self.get_headers())
+		return response.json()["stats"]
+
+	def get_shared_folder_files(self, type: str = "latest", start: int = 0, size: int = 25):
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/shared-folder/files?type={type}&start={start}&size={size}", headers=self.get_headers())
+		return response.json()["fileList"]
+
+
+	def comment(self, message: str = None, stickerId: str = None, userId: str = None, blogId: str = None, wikiId: str = None, replyTo: str = None, isGuest: bool = False) -> int:
+
+		data = {
+			"content": message,
+			"stickerId": stickerId,
+			"type": 0,
+			"timestamp": int(timestamp() * 1000)
+		}
+		if replyTo: data["respondTo"] = replyTo
+		if userId:
+			data["eventSource"] = "UserProfileView"
+			part=f"user-profile/{userId}"
+		elif blogId:
+			data["eventSource"] = "PostDetailView"
+			part=f"blog/{blogId}"
+		elif wikiId:
+			data["eventSource"] = "PostDetailView"
+			part=f"item/{wikiId}"
+		else: raise exceptions.SpecifyType
+
+		data = dumps(data)
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/{part}/{'g-comment' if isGuest else 'comment'}", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+	def delete_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None) -> int:
+
+		if userId:part=f"user-profile/{userId}"
+		elif blogId:part=f"blog/{blogId}"
+		elif wikiId:part=f"item/{wikiId}"
+		else: raise exceptions.SpecifyType
+
+		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/{part}/g-comment/{commentId}", headers=self.get_headers())
+		return response.status_code
+
+
+	def vote_poll(self, blogId: str, optionId: str) -> int:
+		data = dumps({
+			"value": 1,
+			"eventSource": "PostDetailView",
+			"timestamp": int(timestamp() * 1000)
+		})
+		
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog/{blogId}/poll/option/{optionId}/vote", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+	def like_blog(self, blogId: Union[str, list] = None, wikiId: str = None) -> int:
+
+		data = {
+			"value": 4,
+			"timestamp": int(timestamp() * 1000)
+		}
+
+		if blogId:
+			if isinstance(blogId, str):
+				data["eventSource"] = "UserProfileView"
+				data = dumps(data)
+				response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog/{blogId}/g-vote?cv=1.2", data=data, headers=self.get_headers(data=data))
+			elif isinstance(blogId, list):
+				data["targetIdList"] = blogId
+				data = dumps(data)
+				response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/feed/g-vote", data=data, headers=self.get_headers(data=data))
+			else: raise exceptions.WrongType(type(blogId))
+
+		elif wikiId:
+			data["eventSource"] = "PostDetailView"
+			data = dumps(data)
+			response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/item/{wikiId}/g-vote?cv=1.2", data=data, headers=self.get_headers(data=data))
+		else: raise exceptions.SpecifyType()
+		return response.status_code
+
+
+	def unlike_blog(self, blogId: str = None, wikiId: str = None) -> int:
+
+		if blogId: url=f"/x{self.comId}s/blog/{blogId}/g-vote?eventSource=UserProfileView"
+		elif wikiId: url=f"/x{self.comId}/s/item/{wikiId}/g-vote?eventSource=PostDetailView"
+		else: raise exceptions.SpecifyType
+
+		response = self.make_request(method="POST", endpoint=url, headers=self.get_headers())
+		response.status_code
+
+	def like_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None) -> int:
+
+		data = {
+			"value": 1,
+			"timestamp": int(timestamp() * 1000)
+		}
+		if userId:
+			data["eventSource"] = "UserProfileView"
+			part=f"user-profile/{userId}"
+		elif blogId:
+			data["eventSource"] = "PostDetailView"
+			part=f"blog/{blogId}"
+		elif wikiId:
+			data["eventSource"] = "PostDetailView"
+			part=f"item/{wikiId}"
+		else: raise exceptions.SpecifyType
+
+		data = dumps(data)
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/{part}/comment/{commentId}/g-vote?cv=1.2&value=1", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+	def unlike_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None) -> int:
+
+		if userId:part=f"user-profile/{userId}"
+		elif blogId:part=f"blog/{blogId}"
+		elif wikiId:part=f"item/{wikiId}"
+		else: raise exceptions.SpecifyType
+
+		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/{part}/comment/{commentId}/g-vote?eventSource={'UserProfileView' if userId else 'PostDetailView'}", headers=self.get_headers())
+		return response.status_code
+
+	def upvote_comment(self, blogId: str, commentId: str) -> int:
+		data = dumps({
+			"value": 1,
+			"eventSource": "PostDetailView",
+			"timestamp": int(timestamp() * 1000)
+		})
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog/{blogId}/comment/{commentId}/vote?cv=1.2&value=1", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+	def downvote_comment(self, blogId: str, commentId: str) -> int:
+		data = dumps({
+			"value": -1,
+			"eventSource": "PostDetailView",
+			"timestamp": int(timestamp() * 1000)
+		})
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog/{blogId}/comment/{commentId}/vote?cv=1.2&value=1", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+	def unvote_comment(self, blogId: str, commentId: str) -> int:
+
+		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/blog/{blogId}/comment/{commentId}/vote?eventSource=PostDetailView", headers=self.get_headers())
+		return response.status_code
+
+
+	def play_quiz_raw(self, quizId: str, quizAnswerList: list, quizMode: int = 0) -> int:
+		data = dumps({
+			"mode": quizMode,
+			"quizAnswerList": quizAnswerList,
+			"timestamp": int(timestamp() * 1000)
+		})
+		
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog/{quizId}/quiz/result", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+	def play_quiz(self, quizId: str, questionIdsList: list, answerIdsList: list, quizMode: int = 0) -> int:
+		
+		quizAnswerList = []
+		for question, answer in zip(questionIdsList, answerIdsList):
+			part = dumps({
+				"optIdList": [answer],
+				"quizQuestionId": question,
+				"timeSpent": 0.0
+			})
+			quizAnswerList.append(loads(part))
+		return self.play_quiz_raw(quizId=quizId, quizAnswerList=quizAnswerList, quizMode=quizMode)
+
+	def get_quiz_rankings(self, quizId: str, start: int = 0, size: int = 25) -> dict:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog/{quizId}/quiz/result?start={start}&size={size}", headers=self.get_headers())
+		return response.json()
 
 
 #STAFF=============================

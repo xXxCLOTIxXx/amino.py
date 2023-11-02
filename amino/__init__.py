@@ -15,7 +15,7 @@ __title__ = 'amino.api'
 __author__ = 'Xsarz'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2023-2024 Xsarz'
-__version__ = '0.2.2.8'
+__version__ = '0.2.2.9'
 try:__newest__ = loads(get("https://pypi.org/pypi/amino.api/json").text)["info"]["version"]
 except:__newest__ = __version__
 
@@ -39,3 +39,12 @@ if __version__[-1] != "b":
 		update = input("\033[38;5;214mDo you want to update library now? (y/n) >>\033[0m ")
 		if update.lower() == 'y':print(library_update())
 
+"""
+TODO:
+	Finish objects
+	Finish async classes objects
+	Finish FullClient class
+	Remake actions in async client
+	Add two types of actions (take a survey, take a quiz)
+
+"""
