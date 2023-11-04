@@ -82,8 +82,24 @@ class Client(SocketHandler, Requester, Callbacks):
 
 
 #ACCOUNT=============================
+
+
+	def auth(self, email: str = None, number: str = None, sid: str = None, password: str = None, secret: str = None):
+		
+		if sid:
+			return self.login_sid(sid=sid, need_account_info=True)
+		if password is None and secret is None: raise exceptions.SpecifyType("Specify password or secret.")
+		if email:
+			return self.login(email=email, password=password, secret=secret)
+		if number:
+			return self.login_phone(email=email, password=password, secret=secret)
+		raise exceptions.SpecifyType("Specify sid or email or number.")
+		
+
 	def login(self, email: str, password: str = None, secret: str = None) -> profile:
+
 		deviceId = self.deviceId
+		if password is None and secret is None: raise exceptions.SpecifyType
 		data = dumps({
 			"email": email,
 			"v": 2,
@@ -100,13 +116,14 @@ class Client(SocketHandler, Requester, Callbacks):
 		return self.profile
 
 
-	def login_phone(self, phone: str, password: str) -> profile:
+	def login_phone(self, phone: str, password: str = None, secret: str = None) -> profile:
 
 		deviceId = self.deviceId
+		if password is None and secret is None: raise exceptions.SpecifyType
 		data = dumps({
 			"phoneNumber": phone,
 			"v": 2,
-			"secret": f"0 {password}",
+			"secret": secret if secret else f"0 {password}",
 			"deviceID": deviceId,
 			"clientType": 100,
 			"action": "normal",
@@ -1068,7 +1085,7 @@ class Client(SocketHandler, Requester, Callbacks):
 
 
 	def online(self, comId: int):
-
+		
 		data = {
 			"actions": ["Browsing"],
 			"target":f"ndc://x{comId}/",

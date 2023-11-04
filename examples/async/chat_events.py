@@ -11,6 +11,7 @@ print(all_event_types)
 
 async def main():
 	await client.login(email=email, password=password)
+	await client.receive_messages() #start received messages
 
 
 #will trigger when there is a new message in chat (only for text message)
@@ -25,7 +26,7 @@ async def on_message(data):
 async def on_message(data):
 	print("\n\n(on_strike_message))")
 	print(data.json)
-	prin(data.comId)
+	print(data.comId)
 
 """
 will trigger when there is a new message in the chat (any message)

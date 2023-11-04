@@ -3,7 +3,7 @@ from asyncio import get_event_loop
 
 email = "email@gmail.com"
 password = "password"
-client = Client(socket_debug=True)
+client = Client(socket_enabled=False)
 
 async def main():
 	info = await client.login(email=email, password=password)

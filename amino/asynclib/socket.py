@@ -12,19 +12,20 @@ from amino.helpers.types import (
 	ws_message_methods,
 	ws_chat_action_start,
 	ws_chat_action_end,
-	ws_message_types
+	ws_message_types,
+	notification_types
 )
 
 
 class SocketHandler:
 	socket_url = f"wss://ws{randint(1, 4)}.narvii.com"
-	ping_time = 20
-	old_message = list()
-	online_list = set()
+	ping_time = 1.5
+	actions_list = list()
 	active_live_chats = list()
 	connection = None
 	connection_support_loop = None
-	_online_loop = None
+	_actions_loop = None
+	_reslove = None
 
 	def __init__(self, whitelist_communities: list = None, debug: bool = False):
 		self.debug = debug
@@ -56,34 +57,28 @@ class SocketHandler:
 				return
 			self.connection = await self._create_connection()
 			self.connection_support_loop = create_task(self.connection_support())
-			self._online_loop = create_task(self.online_loop())
+			self._actions_loop = create_task(self.actions_loop())
 			self.log("Start", f"Connection established")
 		except Exception as e:
 			self.log("StartError", f"Error while starting Socket : {e}")
 			return
-		await self.resolve()
 
 
 
 	async def disconnect(self):
 		self.log("Disconnect", f"Closing Socket")
 		try:
-			if self.connection:
-				await self.connection.close()
-				self.connection = None
-			if self.connection_support_loop:
-				self.connection_support_loop.cancel()
-				self.connection_support_loop = None
-			if self._online_loop:
-				self._online_loop.cancel()
-				self._online_loop = None
+			await self.connection.close()
+			self.connection = None
+			self.connection_support_loop.cancel()
+			self._actions_loop.cancel()
 			self.active_live_chats = list()
 			self.log("Disconnect", f"Socket closed")
 		except Exception as e:
 			self.log("CloseError", f"Error while closing Socket : {e}")
 
 
-	async def resolve(self):
+	async def receive(self):
 
 		async for raw_message in self.connection:
 			if raw_message.type == WSMsgType.ping:
@@ -105,13 +100,16 @@ class SocketHandler:
 		self.log("ConnectionError", f"Connection lost")
 
 	async def send(self, data):
+
 		self.log("Send", f"Sending Data : {data}")
 		if not self.connection:raise SocketNotStarted()
-		await self.connection.send_str(data)
+		try:await self.connection.send_str(data)
+		except Exception as e:
+			self.self.log("SendError", f"Error while sending data : {e}")
+
 
 	async def send_action(self, message_type: int, body: dict):
 
-		body["id"] = str(randint(1, 1000000))
 		await self.send(dumps({
 				"t": message_type,
 				"o": body,
@@ -124,17 +122,14 @@ class SocketHandler:
 
 
 
-	async def online_loop(self):
+	async def actions_loop(self):
 		while True:
-			for com in self.online_list:
-				await self.send_action(message_type=304, body={
-					"actions": ["Browsing"],
-					"target":f"ndc://x{com}/",
-					"ndcId":com
-				})
+			temp = self.actions_list
+			for data in temp:
+				try: await self.send_action(message_type=304, body=data)
+				except:pass
 				await sleep(1.5)
 			await sleep(self.ping_time)
-
 
 
 	async def vc_loop(self, comId: int, chatId: str, joinType: str):
@@ -176,6 +171,9 @@ class Callbacks:
 		elif method == "chat_message":
 			key = f"{data['o']['chatMessage']['type']}:{data['o']['chatMessage'].get('mediaType', 0)}"
 			ws_event = ws_message_types.get(key)
+		elif method == "notification":
+			key = data["o"]["payload"]["notifType"]
+			ws_event = notification_types.get(key)
 		else:ws_event=None
 
 		if "on_ws_message" in self.handlers.keys():

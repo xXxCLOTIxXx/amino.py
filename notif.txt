@@ -1,0 +1,14 @@
+{'t': 1000, 'o': {'ndcId': 202998887, 'chatMessage': {'author': {'uid': 'a8bfbad0-4427-4999-bb08-b0b65092b869', 'status': 0, 'icon': 'http://pa1.aminoapps.com/8795/d8cfba9627f6d165be9226e0530c27a62a33640dr1-604-444_00.gif', 'reputation': 14143, 'role': 102, 'nickname': 'Xsarz', 'level': 14, 'accountMembershipStatus': 1, 'avatarFrame': {'status': 0, 'version': 1, 'resourceUrl': 'http://af1.aminoapps.com/packages/8105/41f227a83c24723fac14a9b14df1e69b59b02d44.zip', 'name': 'Pink', 'icon': 'http://af1.aminoapps.com/8105/814b99332c0a3a529bae5ddf3003b9010cb04a65_00.gif', 'frameType': 1, 'frameId': '33ef1048-11ef-4135-8302-6b002f2645a0'}}, 'threadId': 'accc1a7a-b9c6-46e8-b8c1-1a55eca96a8f', 'mediaType': 0, 'content': 'Gg', 'clientRefId': 911365485, 'messageId': '720d09c7-7bbd-4dfa-88fc-8e9c7e3a930b', 'uid': 'a8bfbad0-4427-4999-bb08-b0b65092b869', 'createdTime': '2023-11-04T16:00:55Z', 'type': 0, 'isHidden': False, 'includedInSummary': True, 'chatBubbleId': '4c2d0076-8812-4023-be6a-68146bdae66d', 'chatBubbleVersion': 3, 'extensions': {}}, 'alertOption': 1, 'membershipStatus': 1}}
+{'t': 10, 'o': {'payload': {'notifType': 18, 'aps': {'sound': 'default', 'badge': 1, 'alert': ' Xsarz: Gg'}, 'ts': '2023-11-04T16:00:55Z', 'msgType': 0, 'ndcId': 202998887, 'tid': 'accc1a7a-b9c6-46e8-b8c1-1a55eca96a8f', 'isHidden': False, 'id': '2f756f2'}}}  
+
+
+
+
+
+
+
+
+
+{'t': 10, 'o': {'payload': {'uid': 'a8bfbad0-4427-4999-bb08-b0b65092b869', 'notifType': 
+37, 'aps': {'badge': 1, 'alert': 'Xsarz invited you to join a Live Chat: Главный чат'}, 
+'community': {'name': 'Вселенная Микрочипа', 'icon': 'http://cm1.aminoapps.com/8580/03243497d4848685e0c254e43256a52f28620b5d_00.jpg'}, 'exp': 1699113830, 'ndcId': 202998887, 'tid': 'accc1a7a-b9c6-46e8-b8c1-1a55eca96a8f', 'ttype': 2, 'id': '19ffa4fc-896d-4eec-817b-643a094e59ce', 'userProfile': {'accountMembershipStatus': 1, 'nickname': 'Xsarz', 'icon': 'http://pa1.aminoapps.com/8795/d8cfba9627f6d165be9226e0530c27a62a33640dr1-604-444_00.gif'}}}}

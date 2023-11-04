@@ -13,7 +13,8 @@ from .helpers.types import (
 	ws_message_methods,
 	ws_chat_action_start,
 	ws_chat_action_end,
-	ws_message_types
+	ws_message_types,
+	notification_types
 )
 
 
@@ -76,6 +77,7 @@ class SocketHandler:
 		try:
 			self.socket.close()
 			self.run = False
+			self.socket_thread = None
 			self.log("Disconnect", f"Socket closed")
 		except Exception as e:
 			self.log("CloseError", f"Error while closing Socket : {e}")
@@ -90,12 +92,10 @@ class SocketHandler:
 
 	def send_action(self, message_type: int, body: dict):
 
-		data = {
+		self.send(dumps({
 				"t": message_type,
 				"o": body,
-			}
-		data["id"] = str(randint(1, 1000000))
-		self.send(dumps(data))
+			}))
 
 	def send(self, data):
 		self.log("Send", f"Sending Data : {data}")
@@ -177,6 +177,9 @@ class Callbacks:
 		elif method == "chat_message":
 			key = f"{data['o']['chatMessage']['type']}:{data['o']['chatMessage'].get('mediaType', 0)}"
 			ws_event = ws_message_types.get(key)
+		elif method == "notification":
+			key = data["o"]["payload"]["notifType"]
+			ws_event = notification_types.get(key)
 		else:ws_event=None
 
 		if "on_ws_message" in self.handlers.keys():

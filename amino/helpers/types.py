@@ -2,7 +2,8 @@
 ws_message_methods = {
 			304: "chat_action_start",
 			306: "chat_action_end",
-			1000: "chat_message"
+			1000: "chat_message",
+			10: "notification"
 }
 
 ws_chat_action_start = {
@@ -15,6 +16,13 @@ ws_chat_action_end = {
 	"Recording": "recording_end" 
 }
 
+
+notification_types = {
+	18: "on_message_notification",
+	29: "on_invite_to_voice_chat_notification",
+	37: "on_invite_to_video_chat_notification",
+
+}
 
 ws_message_types = {
 	"0:0": "on_text_message",
@@ -72,4 +80,5 @@ def all_ws_types():
 	list(ws_message_methods.values()) +\
 	list(ws_chat_action_start.values()) +\
 	list(ws_chat_action_end.values()) +\
+	list(notification_types.values())+\
 	["on_ws_message"]

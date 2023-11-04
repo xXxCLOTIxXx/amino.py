@@ -13,6 +13,25 @@ from time import time as timestamp
 
 
 class Client(AsyncRequester, SocketHandler, Callbacks):
+	"""
+	***server settings***
+		str *language* - Language for response from the server (Default: "en")
+		str *user_agent* - user agent (Default: "Apple iPhone12,1 iOS v15.5 Main/3.12.2")
+		bool *auto_user_agent* - Does each request generate a new user agent? (Default: False)
+		str *deviceId* - device id (Default: None)
+		bool *auto_device* - Does each request generate a new deviceId? (Default: False)
+		str *certificate_path* - path to certificates (Default: None)
+		dict *proxies* - proxies (Default: None)
+
+	***socket settings***
+		bool *socket_enabled* - Launch socket? (Default: True)
+		bool *socket_debug* - Track the stages of a socket's operation? (Default: False)
+		bool *socket_trace* - socket trace (Default: False)
+		list *socket_whitelist_communities* - By passing a list of communities the socket will respond only to them (Default: None),
+		bool *socket_old_message_mode* - The socket first writes all messages in a separate thread, and basically takes them from a list (Default: False)
+
+	"""
+
 	profile = profile()
 
 	def __init__(self, deviceId: str = None, auto_device: bool = False, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", auto_user_agent: bool = False, socket_enabled: bool = True, socket_debug: bool = False, socket_whitelist_communities: list = None, proxies: dict = None, certificate_path = None):
@@ -77,17 +96,86 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 		if self.socket_enabled:await self.connect()
 		return self.profile
 
+	async def logout(self) -> int:
+
+		deviceId = self.deviceId
+		data = dumps({
+			"deviceID": deviceId,
+			"clientType": 100,
+			"timestamp": int(timestamp() * 1000)
+		})
+
+
+		response = await self.make_request(method="POST", endpoint="/g/s/auth/logout", body=data, headers=self.get_headers(data=data, deviceId=deviceId))
+		if self.socket_enabled: await self.disconnect()
+		return response.status_code
+
+
+#OBJECTS=============================
+	async def get_from_link(self, link: str) -> objects.FromCode:
+
+		response = await self.make_request(method="GET", endpoint=f"/g/s/link-resolution?q={link}", headers=self.get_headers())
+		return objects.FromCode(await response.json()["linkInfoV2"])
+
+
 
 
 #SOCKET=============================
 
 
-	def online(self, comId: int):
-		self.online_list.add(comId)
+	async def create_socket_event(self, data):
+		return await self.call(data)
 
-	def offline(self, comId: int):
-		try:self.online_list.remove(comId)
-		except KeyError:pass
+	async def online(self, comId: int):
+		
+		data = {
+			"actions": ["Browsing"],
+			"target":f"ndc://x{comId}/",
+			"ndcId":comId
+		}
+		if data not in self.actions_list: self.actions_list.append(data)
+		await self.send_action(message_type=304, body=data)
+
+	async def offline(self, comId: int):
+
+		data = {
+			"actions": ["Browsing"],
+			"target":f"ndc://x{comId}/",
+			"ndcId":comId
+		}
+
+		if data in self.actions_list: self.actions_list.remove(data)
+		await self.send_action(message_type=306, body=data)
+
+
+	async def browsing_blogs_start(self, comId: int, blogId: str = None, quizId: str = None):
+		data = {
+			"actions": ["Browsing"],
+			"target": f"ndc://x{comId}/blog/{blogId or quizId}",
+			"ndcId":comId,
+			"params": {
+				"blogType": 0 if blogId else 6,
+				}
+		}
+
+		if data not in self.actions_list: self.actions_list.append(data)
+		await self.send_action(message_type=304, body=data)
+
+
+	async def browsing_blogs_end(self, comId: int, blogId: str = None, quizId: str = None):
+		data = {
+			"actions": ["Browsing"],
+			"target": f"ndc://x{comId}/blog/{blogId or quizId}",
+			"ndcId":comId,
+			"params": {
+				"blogType": 0 if blogId else 6,
+				}
+		}
+
+		if data in self.actions_list: self.actions_list.remove(data)
+		await self.send_action(message_type=306, body=data)
+	
+
 
 
 	async def typing_start(self, chatId: str, comId: int = None):
@@ -136,6 +224,7 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 		}
 		if comId:data["ndcId"]=comId
 		await self.send_action(message_type=306, body=data)
+	
 
 
 	async def join_live_chat(self, chatId: str, comId: int = None, as_viewer: bool = False):
@@ -168,3 +257,6 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 	def leave_from_live_chat(self, chatId: str):
 		if chatId in self.active_live_chats:
 			self.active_live_chats.remove(chatId)
+	
+	async def receive_messages(self):
+		if self.socket_enabled and self.connect:await self.receive()
