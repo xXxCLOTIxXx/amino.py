@@ -1,5 +1,6 @@
 from ..helpers.types import renamed
 
+
 class ObjectCreator:
 	def __init__(self, data = {}):
 		self.json = self.add_standard_keys(data)
@@ -21,6 +22,7 @@ class ObjectCreator:
 		for i in renamed.keys():
 			if i in data.keys():
 				data[renamed.get(i)] = data.get(i)
+				if ':' in i:del data[i]
 		return data
 
 
@@ -41,3 +43,7 @@ class ObjectCreator:
 
 	def __repr__(self):
 		return repr(self.json)
+
+
+class AsyncObjectCreator(ObjectCreator):
+	pass

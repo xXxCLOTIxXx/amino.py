@@ -1,6 +1,6 @@
 from amino.helpers.requester import AsyncRequester
 from amino.helpers.headers import headers, tapjoy, tapjoy_headers
-from amino.models.objects import ObjectCreator
+from amino.models.objects import AsyncObjectCreator
 from amino.helpers import exceptions
 from amino.helpers.generators import generate_deviceId, sid_to_uid, generate_user_agent
 from .socket import SocketHandler, Callbacks
@@ -31,7 +31,7 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 
 	"""
 
-	profile = ObjectCreator()
+	profile = AsyncObjectCreator()
 
 	def __init__(self, deviceId: str = None, auto_device: bool = False, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", auto_user_agent: bool = False, socket_enabled: bool = True, socket_debug: bool = False, socket_whitelist_communities: list = None, proxies: dict = None, certificate_path = None):
 		AsyncRequester.__init__(self, session=ClientSession(), proxies=proxies, verify=certificate_path)
@@ -81,7 +81,20 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 
 
 #ACCOUNT=============================
-	async def login(self, email: str, password: str = None, secret: str = None) -> profile:
+
+	async def auth(self, email: str = None, number: str = None, sid: str = None, password: str = None, secret: str = None) -> AsyncObjectCreator:
+		
+		if sid:
+			return await self.login_sid(sid=sid, need_account_info=True)
+		if password is None and secret is None: raise exceptions.SpecifyType("Specify password or secret.")
+		if email:
+			return await self.login(email=email, password=password, secret=secret)
+		if number:
+			return await self.login_phone(email=email, password=password, secret=secret)
+		raise exceptions.SpecifyType("Specify sid or email or number.")
+
+
+	async def login(self, email: str, password: str = None, secret: str = None) -> AsyncObjectCreator:
 		deviceId = self.deviceId
 		data = dumps({
 			"email": email,
@@ -94,9 +107,41 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 		})
 
 		response = await self.make_request(method="POST", endpoint="/g/s/auth/login", data=data, headers=self.get_headers(data=data, deviceId=deviceId))
-		self.profile = ObjectCreator(await response.json())
+		self.profile = AsyncObjectCreator(await response.json())
 		if self.socket_enabled:await self.connect()
 		return self.profile
+
+	
+
+	async def login_phone(self, phone: str, password: str = None, secret: str = None) -> AsyncObjectCreator:
+
+		deviceId = self.deviceId
+		if password is None and secret is None: raise exceptions.SpecifyType
+		data = dumps({
+			"phoneNumber": phone,
+			"v": 2,
+			"secret": secret if secret else f"0 {password}",
+			"deviceID": deviceId,
+			"clientType": 100,
+			"action": "normal",
+			"timestamp": int(timestamp() * 1000)
+		})
+
+		response = await self.make_request(method="POST", endpoint="/g/s/auth/login", data=data, headers=self.get_headers(data=data, deviceId=deviceId))
+		self.profile = AsyncObjectCreator(await response.json())
+		if self.socket_enabled:await self.connect()
+		return self.profile
+
+
+	async def login_sid(self, sid: str, need_account_info: bool = False) -> AsyncObjectCreator:
+		data = {"sid": sid, "auid": sid_to_uid(sid)}
+		if need_account_info:data["userProfile"]=await self.get_user_info(sid_to_uid(sid))
+		self.profile=AsyncObjectCreator(data)
+		if self.socket_enabled:await self.connect()
+		return self.profile
+
+
+
 
 	async def logout(self) -> int:
 
@@ -110,15 +155,15 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 
 		response = await self.make_request(method="POST", endpoint="/g/s/auth/logout", data=data, headers=self.get_headers(data=data, deviceId=deviceId))
 		if self.socket_enabled: await self.disconnect()
-		self.profile = ObjectCreator()
+		self.profile = AsyncObjectCreator()
 		return response.status_code
 
 
 #OBJECTS=============================
-	async def get_from_link(self, link: str) -> ObjectCreator:
+	async def get_from_link(self, link: str) -> AsyncObjectCreator:
 
 		response = await self.make_request(method="GET", endpoint=f"/g/s/link-resolution?q={link}", headers=self.get_headers())
-		return ObjectCreator(await response.json()["linkInfoV2"])
+		return AsyncObjectCreator(await response.json()["linkInfoV2"])
 
 
 

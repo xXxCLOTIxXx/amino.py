@@ -4,11 +4,12 @@ from .helpers.headers import headers, tapjoy, tapjoy_headers
 from .models.objects import ObjectCreator
 from .helpers import exceptions
 from .helpers.generators import generate_deviceId, generate_user_agent, sid_to_uid
+from .helpers.generators import timezone as _timezone
 
 from requests import Session
 from time import time as timestamp
 from json import dumps
-from time import timezone
+from time import timezone as tz
 from locale import getdefaultlocale as locale
 from base64 import b64encode
 from threading import Thread
@@ -16,10 +17,6 @@ from uuid import UUID
 from os import urandom
 from typing import BinaryIO, Union
 from binascii import hexlify
-
-
-
-
 
 class Client(SocketHandler, Requester, Callbacks):
 
@@ -145,14 +142,11 @@ class Client(SocketHandler, Requester, Callbacks):
 
 
 	def login_sid(self, sid: str, need_account_info: bool = False) -> ObjectCreator:
-		if need_account_info:
-			self.profile=ObjectCreator({"sid": sid, "auid": sid_to_uid(sid), "userProfile": self.get_user_info(sid_to_uid(sid)).json})
-		else:
-			self.profile=ObjectCreator({"sid": sid, "auid": sid_to_uid(sid)})
+		data = {"sid": sid, "auid": sid_to_uid(sid)}
+		if need_account_info:data["userProfile"]=self.get_user_info(sid_to_uid(sid))
+		self.profile=ObjectCreator(data)
 		if self.socket_enabled:self.connect()
 		return self.profile
-
-
 
 
 	def register_account(self, nickname: str, email: str, password: str, verificationCode: str, deviceId: str = None, timeout: int = None) -> ObjectCreator:
@@ -348,7 +342,7 @@ class Client(SocketHandler, Requester, Callbacks):
 			"deviceID": deviceId,
 			"bundleID": "com.narvii.amino.master",
 			"clientType": 100,
-			"timezone": -timezone // 1000,
+			"timezone": -tz // 1000,
 			"systemPushEnabled": True,
 			"locale": locale()[0],
 			"timestamp": int(timestamp() * 1000)
@@ -715,9 +709,54 @@ class Client(SocketHandler, Requester, Callbacks):
 		return ObjectCreator(response.json()["thread"])
 
 
-	def edit_chat(self, chatId: str, doNotDisturb: bool = None, pinChat: bool = None, title: str = None, icon: str = None, backgroundImage: str = None, content: str = None, announcement: str = None, coHosts: list = None, keywords: list = None, pinAnnouncement: bool = None, publishToGlobal: bool = None, canTip: bool = None, viewOnly: bool = None, canInvite: bool = None, fansOnly: bool = None):
-		#Not completed
-		pass
+	def do_not_disturb_chat(self, chatId: str, doNotDisturb: bool = True) -> int:
+		data = dumps({"alertOption": 2 if doNotDisturb else 1, "timestamp": int(timestamp() * 1000)})
+		response = self.make_request(method="POST", endpoint=f"/g/s/chat/thread/{chatId}/member/{self.userId}/alert", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+	def pin_chat(self, chatId: str, pin: bool = True) -> int:
+		response = self.make_request(method="POST", endpoint=f"/g/s/chat/thread/{chatId}/{'pin' if pin else 'unpin'}", headers=self.get_headers())
+		return response.status_code
+
+	def add_co_host(self, chatId: str, userIds: list) -> int:
+			
+		data = dumps({"uidList": userIds, "timestamp": int(timestamp() * 1000)})
+		response = self.make_request(method="POST", endpoint=f"/g/s/chat/thread/{chatId}/co-host", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+	def edit_chat(self, chatId: str, title: str = None, icon: str = None, backgroundImage: str = None, content: str = None, announcement: str = None, keywords: list = None, pinAnnouncement: bool = None, publishToGlobal: bool = None, canTip: bool = None, viewOnly: bool = None, canInvite: bool = None, fansOnly: bool = None) -> list:
+
+		_data = {"timestamp": int(timestamp() * 1000), "publishToGlobal": 0 if publishToGlobal else 1}
+
+		if title: data["title"] = title
+		if content: data["content"] = content
+		if icon: data["icon"] = icon
+		if keywords: data["keywords"] = keywords
+		if announcement: data["extensions"] = {"announcement": announcement}
+		if pinAnnouncement: data["extensions"] = {"pinAnnouncement": pinAnnouncement}
+		if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
+
+		responses = list()
+		if backgroundImage is not None:
+			data = dumps({"media": [100, backgroundImage, None], "timestamp": int(timestamp() * 1000)})
+			response = self.make_request(method="POST", endpoint=f"/g/s/chat/thread/{chatId}/member/{self.userId}/background", data=data, headers=self.get_headers(data=data))
+			responses.append({"backgroundImage":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
+		if viewOnly is not None:
+			response = self.make_request(method="POST", endpoint=f"/g/s/chat/thread/{chatId}/{'enable' if viewOnly else 'disable'}", headers=self.get_headers(content_type="application/x-www-form-urlencoded"))
+			responses.append({"viewOnly":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
+		if canInvite is not None:
+			response = self.make_request(method="POST", endpoint=f"/g/s/chat/thread/{chatId}/{'enable' if canInvite else 'disable'}", headers=self.get_headers())
+			responses.append({"canInvite":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
+		if canTip is not None:
+			response = self.make_request(method="POST", endpoint=f"/g/s/chat/thread/{chatId}/{'enable' if canTip else 'disable'}", headers=self.get_headers())
+			responses.append({"canTip":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
+		data = dumps(_data)
+
+		response = self.make_request(method="POST", endpoint=f"/g/s/chat/thread/{chatId}", data=data, headers=self.get_headers(data=data))
+		responses.append({"main":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
+		return responses
+
+
 
 
 	def get_my_chats(self, start: int = 0, size: int = 25) -> ObjectCreator:
@@ -1224,3 +1263,4 @@ class Client(SocketHandler, Requester, Callbacks):
 	def leave_from_live_chat(self, chatId: str):
 		if chatId in self.active_live_chats:
 			self.active_live_chats.remove(chatId)
+

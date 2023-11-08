@@ -3,6 +3,7 @@ from .helpers import exceptions
 from .client import Client
 from .helpers.generators import timezone
 from .models.objects import ObjectCreator
+from .helpers.types import community_modules
 
 from json import dumps, loads
 
@@ -261,13 +262,11 @@ class CommunityClient(Client):
 	def get_store_chat_bubbles(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/store/items?sectionGroupId=chat-bubble&start={start}&size={size}", headers=self.get_headers()).json()
-		del response["api:message"], response["api:statuscode"], response["api:duration"], response["api:timestamp"]
 		return ObjectCreator(response)
 
 	def get_store_stickers(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/store/items?sectionGroupId=sticker&start={start}&size={size}", headers=self.get_headers()).json()
-		del response["api:message"], response["api:statuscode"], response["api:duration"], response["api:timestamp"]
 		return ObjectCreator(response)
 
 
@@ -467,9 +466,58 @@ class CommunityClient(Client):
 		return ObjectCreator(response.json()["thread"])
 
 
-	def edit_chat(self, chatId: str, doNotDisturb: bool = None, pinChat: bool = None, title: str = None, icon: str = None, backgroundImage: str = None, content: str = None, announcement: str = None, coHosts: list = None, keywords: list = None, pinAnnouncement: bool = None, publishToGlobal: bool = None, canTip: bool = None, viewOnly: bool = None, canInvite: bool = None, fansOnly: bool = None) -> list:
-		#TODO
-		pass
+	def do_not_disturb_chat(self, chatId: str, doNotDisturb: bool = True) -> int:
+		data = dumps({"alertOption": 2 if doNotDisturb else 1, "timestamp": int(timestamp() * 1000)})
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.userId}/alert", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+	def pin_chat(self, chatId: str, pin: bool = True) -> int:
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/{'pin' if pin else 'unpin'}", headers=self.get_headers())
+		return response.status_code
+
+	def add_co_host(self, chatId: str, userIds: list) -> int:
+			
+		data = dumps({"uidList": userIds, "timestamp": int(timestamp() * 1000)})
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/co-host", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+	def delete_co_host(self, chatId: str, userId: str) -> int:
+
+		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/co-host/{userId}", headers=self.get_headers())
+		return response.status_code
+
+
+	def edit_chat(self, chatId: str, title: str = None, icon: str = None, backgroundImage: str = None, content: str = None, announcement: str = None, keywords: list = None, pinAnnouncement: bool = None, publishToGlobal: bool = None, canTip: bool = None, viewOnly: bool = None, canInvite: bool = None, fansOnly: bool = None) -> list:
+
+		_data = {"timestamp": int(timestamp() * 1000), "publishToGlobal": 0 if publishToGlobal else 1}
+
+		if title: data["title"] = title
+		if content: data["content"] = content
+		if icon: data["icon"] = icon
+		if keywords: data["keywords"] = keywords
+		if announcement: data["extensions"] = {"announcement": announcement}
+		if pinAnnouncement: data["extensions"] = {"pinAnnouncement": pinAnnouncement}
+		if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
+
+		responses = list()
+		if backgroundImage is not None:
+			data = dumps({"media": [100, backgroundImage, None], "timestamp": int(timestamp() * 1000)})
+			response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.userId}/background", data=data, headers=self.get_headers(data=data))
+			responses.append({"backgroundImage":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
+		if viewOnly is not None:
+			response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/{'enable' if viewOnly else 'disable'}", headers=self.get_headers(content_type="application/x-www-form-urlencoded"))
+			responses.append({"viewOnly":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
+		if canInvite is not None:
+			response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/{'enable' if canInvite else 'disable'}", headers=self.get_headers())
+			responses.append({"canInvite":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
+		if canTip is not None:
+			response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/{'enable' if canTip else 'disable'}", headers=self.get_headers())
+			responses.append({"canTip":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
+		data = dumps(_data)
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}", data=data, headers=self.get_headers(data=data))
+		responses.append({"main":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
+		return responses
 
 
 	def invite_to_chat(self, userId: Union[str, list], chatId: str) -> int:
@@ -1295,6 +1343,191 @@ class CommunityClient(Client):
 
 
 
+	def get_hidden_blogs(self, start: int = 0, size: int = 25) -> ObjectCreator:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/feed/blog-disabled?start={start}&size={size}", headers=self.get_headers())
+		return ObjectCreator(response.json()["blogList"])
+
+
+	def get_featured_users(self, start: int = 0, size: int = 25) -> ObjectCreator:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile?type=featured&start={start}&size={size}", headers=self.get_headers())
+		return ObjectCreator(response.json())
+
+	def review_quiz_questions(self, quizId: str) -> ObjectCreator:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog/{quizId}?action=review", headers=self.get_headers())
+		return ObjectCreator(response.json()["blog"]["quizQuestionList"])
+
+	def get_recent_quiz(self, start: int = 0, size: int = 25) -> ObjectCreator:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog?type=quizzes-recent&start={start}&size={size}", headers=self.get_headers())
+		return ObjectCreator(response.json()["blogList"])
+
+
+	def get_trending_quiz(self, start: int = 0, size: int = 25) -> ObjectCreator:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/feed/quiz-trending?start={start}&size={size}", headers=self.get_headers())
+		return ObjectCreator(response.json()["blogList"])
+
+	def get_best_quiz(self, start: int = 0, size: int = 25) -> ObjectCreator:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/feed/quiz-best-quizzes?start={start}&size={size}", headers=self.get_headers())
+		return ObjectCreator(response.json()["blogList"])
+
+
+	def add_poll_option(self, blogId: str, question: str) -> int:
+		data = dumps({
+			"mediaList": None,
+			"title": question,
+			"type": 0,
+			"timestamp": int(timestamp() * 1000)
+		})
+
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog/{blogId}/poll/option", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+	def create_wiki_category(self, title: str, parentCategoryId: str, content: str = None) -> int:
+		data = dumps({
+			"content": content,
+			"icon": None,
+			"label": title,
+			"mediaList": None,
+			"parentCategoryId": parentCategoryId,
+			"timestamp": int(timestamp() * 1000)
+		})
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/item-category", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+	def create_shared_folder(self,title: str) -> int:
+		data = dumps({
+				"title":title,
+				"timestamp":int(timestamp() * 1000)
+			})
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/shared-folder/folders", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+	def submit_to_wiki(self, wikiId: str, message: str) -> int:
+		data = dumps({
+			"message": message,
+			"itemId": wikiId,
+			"timestamp": int(timestamp() * 1000)
+		})
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/knowledge-base-request", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+	def accept_wiki_request(self, requestId: str, destinationCategoryIdList: list) -> int:
+		data = dumps({
+			"destinationCategoryIdList": destinationCategoryIdList,
+			"actionType": "create",
+			"timestamp": int(timestamp() * 1000)
+		})
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/knowledge-base-request/{requestId}/approve", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+	def reject_wiki_request(self, requestId: str) -> int:
+
+		data = dumps({})
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/knowledge-base-request/{requestId}/reject", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+	def get_wiki_submissions(self, start: int = 0, size: int = 25) -> ObjectCreator:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/knowledge-base-request?type=all&start={start}&size={size}", headers=self.get_headers())
+		return ObjectCreator(response.json()["knowledgeBaseRequestList"])
+
+
+
+	def get_categories(self, start: int = 0, size: int = 25) -> ObjectCreator:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog-category?start={start}&size={size}", headers=self.get_headers())
+		return ObjectCreator(response.json())
+
+
+	def change_sidepanel_color(self, color: str) -> ObjectCreator:
+		data = dumps({
+			"path": "appearance.leftSidePanel.style.iconColor",
+			"value": color,
+			"timestamp": int(timestamp() * 1000)
+		})
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/configuration", data=data, headers=self.get_headers(data=data))
+		return ObjectCreator(response.json())
+
+
+	def upload_themepack_raw(self, file: BinaryIO) -> ObjectCreator:
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/media/upload/target/community-theme-pack", data=file.read(), headers=self.get_headers(data=file.read()))
+		return ObjectCreator(response.json())
+	
+
+	def get_community_stats(self) -> ObjectCreator:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/community/stats", headers=self.get_headers())
+		return ObjectCreator(response.json()["communityStats"])
+
+	def get_community_user_stats(self, type: str, start: int = 0, size: int = 25) -> ObjectCreator:
+
+		if type.lower() not in ("leader", "curator"):raise exceptions.WrongType(type)
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/community/stats/moderation?type={'leader' if type.lower() == 'leader' else 'curator'}&start={start}&size={size}", headers=self.get_headers())
+		return ObjectCreator(response.json()["userProfileList"])
+
+
+	def change_welcome_message(self, message: str, isEnabled: bool = True) -> int:
+		data = dumps({
+			"path": "general.welcomeMessage",
+			"value": {
+				"enabled": isEnabled,
+				"text": message
+			},
+			"timestamp": int(timestamp() * 1000)
+		})
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/configuration", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+	def change_guidelines(self, message: str) -> int:
+		data = dumps({
+			"content": message,
+			"timestamp": int(timestamp() * 1000)
+		})
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/guideline", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+	def change_module(self, module: str, isEnabled: bool) -> int:
+
+		if module.lower() not in community_modules.keys():raise exceptions.SpecifyType()
+		data = dumps({
+			"path": community_modules.get(module.lower()),
+			"value": isEnabled,
+			"timestamp": int(timestamp() * 1000)
+		})
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/configuration", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+	def get_notice_list(self, start: int = 0, size: int = 25) -> ObjectCreator:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/notice?type=management&status=1&start={start}&size={size}", headers=self.get_headers())
+		return ObjectCreator(response.json()["noticeList"])
+
+	def delete_pending_role(self, noticeId: str) -> int:
+
+		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/notice/{noticeId}", headers=self.get_headers())
+		return response.status_code
 
 #OTHER=============================
 

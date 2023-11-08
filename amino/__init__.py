@@ -15,7 +15,7 @@ __title__ = 'amino.api'
 __author__ = 'Xsarz'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2023-2024 Xsarz'
-__version__ = '0.2.4'
+__version__ = '0.2.5'
 try:__newest__ = loads(get("https://pypi.org/pypi/amino.api/json").text)["info"]["version"]
 except:__newest__ = __version__
 
@@ -38,10 +38,3 @@ if __version__[-1] != "b":
 		print(f'\033[38;5;214m{__title__} made by {__author__}\nPlease update the library. Your version: {__version__}  A new version: {__newest__}\033[0m')
 		update = input("\033[38;5;214mDo you want to update library now? (y/n) >>\033[0m ")
 		if update.lower() == 'y':print(library_update())
-
-"""
-TODO:
-	Finish objects
-	Finish FullClient class
-
-"""

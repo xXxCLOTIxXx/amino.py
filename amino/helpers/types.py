@@ -90,5 +90,29 @@ renamed = {
 	"ndcId": "comId",
 	"threadId": "chatId",
 	"uid": "userId",
-	"auid": "userId"
+	"auid": "userId",
+	"api:message": "api_message",
+	"api:statuscode": "api_statuscode",
+	"api:duration": "api_duration",
+	"api:timestamp": "api_timestamp"
+}
+
+
+community_modules = {
+	"chat": "module.chat.enabled",
+	"livechat": "module.chat.avChat.videoEnabled",
+	"screeningroom": "module.chat.avChat.screeningRoomEnabled",
+	"publicchats": "module.chat.publicChat.enabled",
+	"posts": "module.post.enabled",
+	"ranking": "module.ranking.enabled",
+	"leaderboards": "module.ranking.leaderboardEnabled",
+	"featured": "module.featured.enabled",
+	"featuredposts": "module.featured.postEnabled",
+	"featuredusers": "module.featured.memberEnabled",
+	"featuredchats": "module.featured.publicChatRoomEnabled",
+	"sharedfolder": "module.sharedFolder.enabled",
+	"influencer": "module.influencer.enabled",
+	"catalog": "module.catalog.enabled",
+	"externalcontent": "module.externalContent.enabled",
+	"topiccategories": "module.topicCategories.enabled"
 }
