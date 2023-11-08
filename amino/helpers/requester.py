@@ -14,6 +14,8 @@ class Requester:
 
 
 	def make_request(self, method: str, endpoint: str, data = None, successfully: int = 200, headers = None, timeout=None):
+		#print(endpoint)
+		#print(headers)
 		response = self.session.request(method, f"{api}{endpoint}", proxies=self.proxies, verify=self.verify, data=data, headers=headers, timeout=timeout)
 		if successfully: return check_exceptions(response.text, response.status_code) if response.status_code != successfully else response
 		return response

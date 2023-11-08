@@ -105,7 +105,7 @@ class SocketHandler:
 		if not self.connection:raise SocketNotStarted()
 		try:await self.connection.send_str(data)
 		except Exception as e:
-			self.self.log("SendError", f"Error while sending data : {e}")
+			self.log("SendError", f"Error while sending data : {e}")
 
 
 	async def send_action(self, message_type: int, body: dict):

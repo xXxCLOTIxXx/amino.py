@@ -891,7 +891,7 @@ class CommunityClient(Client):
 
 
 		if fileId:part=f"shared-folder/files/{fileId}"
-		elif blogId or quizId:part=f"blog/{blogId}"
+		elif blogId or quizId:part=f"blog/{blogId or quizId}"
 		elif wikiId:part=f"item/{wikiId}"
 		else: raise exceptions.SpecifyType
 
@@ -1104,7 +1104,7 @@ class CommunityClient(Client):
 		return response.status_code
 
 
-	def play_quiz_raw(self, quizId: str, quizAnswerList: list, quizMode: int = 0) -> int:
+	def play_quiz_raw(self, quizId: str, quizAnswerList: list, quizMode: int = 0) -> ObjectCreator:
 		data = dumps({
 			"mode": quizMode,
 			"quizAnswerList": quizAnswerList,
@@ -1112,10 +1112,10 @@ class CommunityClient(Client):
 		})
 		
 		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog/{quizId}/quiz/result", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+		return ObjectCreator(response.json())
 
 
-	def play_quiz(self, quizId: str, questionIdsList: list, answerIdsList: list, quizMode: int = 0) -> int:
+	def play_quiz(self, quizId: str, questionIdsList: list, answerIdsList: list, quizMode: int = 0) -> ObjectCreator:
 		
 		quizAnswerList = []
 		for question, answer in zip(questionIdsList, answerIdsList):

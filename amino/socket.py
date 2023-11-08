@@ -102,7 +102,7 @@ class SocketHandler:
 		if not self.socket_thread:raise SocketNotStarted()
 		try:self.socket.send(data)
 		except Exception as e:
-			self.self.log("SendError", f"Error while sending data : {e}")
+			self.log("SendError", f"Error while sending data : {e}")
 
 
 
