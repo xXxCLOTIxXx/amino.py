@@ -43,8 +43,8 @@ class CommunityClient(Client):
 
 	"""
 
-	def __init__(self, comId: int = None, community_link: str = None, aminoId: str = None, profile = None, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", auto_user_agent:  bool = False, deviceId: str = None, auto_device: bool = False, proxies: dict = None, certificate_path = None):
-		Client.__init__(self, language=language, user_agent=user_agent, auto_user_agent=auto_user_agent, deviceId=deviceId, auto_device=auto_device, socket_enabled=False, proxies=proxies, certificate_path=certificate_path)
+	def __init__(self, comId: int = None, community_link: str = None, aminoId: str = None, profile = None, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", auto_user_agent:  bool = False, deviceId: str = None, auto_device: bool = False, proxies: dict = None, certificate_path = None, http_connect: bool = True):
+		Client.__init__(self, language=language, user_agent=user_agent, auto_user_agent=auto_user_agent, deviceId=deviceId, auto_device=auto_device, socket_enabled=False, proxies=proxies, certificate_path=certificate_path, http_connect=http_connect)
 		if profile:self.profile=profile
 
 		if comId:
@@ -1357,23 +1357,23 @@ class CommunityClient(Client):
 	def review_quiz_questions(self, quizId: str) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog/{quizId}?action=review", headers=self.get_headers())
-		return ObjectCreator(response.json()["blog"]["quizQuestionList"])
+		return ObjectCreator(response.json())
 
 	def get_recent_quiz(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog?type=quizzes-recent&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["blogList"])
+		return ObjectCreator(response.json())
 
 
 	def get_trending_quiz(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/feed/quiz-trending?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["blogList"])
+		return ObjectCreator(response.json())
 
 	def get_best_quiz(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/feed/quiz-best-quizzes?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["blogList"])
+		return ObjectCreator(response.json())
 
 
 	def add_poll_option(self, blogId: str, question: str) -> int:

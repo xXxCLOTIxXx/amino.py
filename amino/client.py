@@ -17,6 +17,7 @@ from uuid import UUID
 from os import urandom
 from typing import BinaryIO, Union
 from binascii import hexlify
+import urllib3
 
 class Client(SocketHandler, Requester, Callbacks):
 
@@ -42,8 +43,10 @@ class Client(SocketHandler, Requester, Callbacks):
 	profile = ObjectCreator()
 	active_live_chats = list()
 
-	def __init__(self, deviceId: str = None, auto_device: bool = False, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", auto_user_agent: bool = False, socket_enabled: bool = True, socket_debug: bool = False, socket_trace: bool = False, socket_whitelist_communities: list = None, socket_old_message_mode: bool = False, proxies: dict = None, certificate_path = None):
-		Requester.__init__(self, session=Session(), proxies=proxies, verify=certificate_path)
+	def __init__(self, deviceId: str = None, auto_device: bool = False, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", auto_user_agent: bool = False, socket_enabled: bool = True, socket_debug: bool = False, socket_trace: bool = False, socket_whitelist_communities: list = None, socket_old_message_mode: bool = False, proxies: dict = None, certificate_path = None, http_connect: bool = True):
+		if http_connect:
+			urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+		Requester.__init__(self, session=Session(), proxies=proxies, verify=certificate_path, http_connect=http_connect)
 		self.socket_enabled=socket_enabled
 		if socket_enabled:
 			SocketHandler.__init__(self, old_message_mode=socket_old_message_mode, whitelist_communities=socket_whitelist_communities, sock_trace=socket_trace, debug=socket_debug)

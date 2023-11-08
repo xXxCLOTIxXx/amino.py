@@ -1,5 +1,5 @@
 from ..helpers.types import renamed
-
+from json import loads
 
 class ObjectCreator:
 	def __init__(self, data = {}):
@@ -19,10 +19,12 @@ class ObjectCreator:
 
 
 	def add_standard_keys(self, data: dict):
-		for i in renamed.keys():
-			if i in data.keys():
-				data[renamed.get(i)] = data.get(i)
-				if ':' in i:del data[i]
+		if isinstance(data, dict):
+			for i in renamed.keys():
+				if i in data.keys():
+					data[renamed.get(i)] = data.get(i, {})
+					if ':' in i:del data[i]
+			return data
 		return data
 
 
@@ -34,12 +36,18 @@ class ObjectCreator:
 			for i in data:
 				temp.append(self.class_wrapper(i))
 			return temp
+		if isinstance(data, str):
+			try:
+				data = loads(data)
+				return self.__class__(self.add_standard_keys(data))
+			except:
+				return data
 
 		return data
 
 
 	def __getattr__(self, item: str):
-		return self.class_wrapper(self.json.get(item))
+		return self.class_wrapper(self.json.get(item, {}))
 
 	def __repr__(self):
 		return repr(self.json)

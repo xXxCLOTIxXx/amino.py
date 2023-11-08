@@ -9,7 +9,7 @@ from aiohttp import ClientSession
 from asyncio import get_event_loop, create_task, new_event_loop
 from json import dumps
 from time import time as timestamp
-
+import urllib3
 
 class Client(AsyncRequester, SocketHandler, Callbacks):
 	"""
@@ -33,8 +33,10 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 
 	profile = AsyncObjectCreator()
 
-	def __init__(self, deviceId: str = None, auto_device: bool = False, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", auto_user_agent: bool = False, socket_enabled: bool = True, socket_debug: bool = False, socket_whitelist_communities: list = None, proxies: dict = None, certificate_path = None):
-		AsyncRequester.__init__(self, session=ClientSession(), proxies=proxies, verify=certificate_path)
+	def __init__(self, deviceId: str = None, auto_device: bool = False, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", auto_user_agent: bool = False, socket_enabled: bool = True, socket_debug: bool = False, socket_whitelist_communities: list = None, proxies: dict = None, certificate_path = None, http_connect: bool = True):
+		if http_connect:
+			urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+		AsyncRequester.__init__(self, session=ClientSession(), proxies=proxies, verify=certificate_path, http_connect=http_connect)
 		if socket_enabled:
 			SocketHandler.__init__(self, whitelist_communities=socket_whitelist_communities, debug=socket_debug)
 			Callbacks.__init__(self)
