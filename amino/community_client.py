@@ -40,11 +40,29 @@ class CommunityClient(Client):
 		bool *auto_device* - Does each request generate a new deviceId? (Default: False)
 		str *certificate_path* - path to certificates (Default: None)
 		dict *proxies* - proxies (Default: None)
+		bool *requests_debug* - Track requests (Default: False)
+		bool *http_connect* - Work with http connection (Default: False)
 
 	"""
 
-	def __init__(self, comId: int = None, community_link: str = None, aminoId: str = None, profile = None, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", auto_user_agent:  bool = False, deviceId: str = None, auto_device: bool = False, proxies: dict = None, certificate_path = None, http_connect: bool = True):
-		Client.__init__(self, language=language, user_agent=user_agent, auto_user_agent=auto_user_agent, deviceId=deviceId, auto_device=auto_device, socket_enabled=False, proxies=proxies, certificate_path=certificate_path, http_connect=http_connect)
+	def __init__(self,
+		comId: int = None,
+		community_link: str = None,
+		aminoId: str = None, 
+		profile = None,
+		language: str = "en", 
+		user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", 
+		auto_user_agent:  bool = False, 
+		deviceId: str = None, 
+		auto_device: bool = False, 
+		proxies: dict = None, 
+		certificate_path = None, 
+		http_connect: bool = True, 
+		requests_debug: bool = False
+		):
+
+
+		Client.__init__(self, language=language, user_agent=user_agent, auto_user_agent=auto_user_agent, deviceId=deviceId, auto_device=auto_device, socket_enabled=False, proxies=proxies, certificate_path=certificate_path, http_connect=http_connect, requests_debug=requests_debug)
 		if profile:self.profile=profile
 
 		if comId:
@@ -93,7 +111,7 @@ class CommunityClient(Client):
 		})
 
 		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/check-in/lottery", data=data, headers=self.get_headers(data=data))
-		return ObjectCreator(response.json()["lotteryLog"])
+		return ObjectCreator(response.json())
 
 
 
@@ -160,14 +178,14 @@ class CommunityClient(Client):
 	def get_notifications(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/notification?pagingType=t&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["notificationList"])
+		return ObjectCreator(response.json())
 
 
 	def get_notices(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/notice?type=usersV2&status=1&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["noticeList"])
+		return ObjectCreator(response.json())
 
 
 	def promotion(self, noticeId: str, type: str = "accept") -> int:
@@ -261,13 +279,13 @@ class CommunityClient(Client):
 
 	def get_store_chat_bubbles(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/store/items?sectionGroupId=chat-bubble&start={start}&size={size}", headers=self.get_headers()).json()
-		return ObjectCreator(response)
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/store/items?sectionGroupId=chat-bubble&start={start}&size={size}", headers=self.get_headers())
+		return ObjectCreator(response.json())
 
 	def get_store_stickers(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/store/items?sectionGroupId=sticker&start={start}&size={size}", headers=self.get_headers()).json()
-		return ObjectCreator(response)
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/store/items?sectionGroupId=sticker&start={start}&size={size}", headers=self.get_headers())
+		return ObjectCreator(response.json())
 
 
 
@@ -276,12 +294,12 @@ class CommunityClient(Client):
 	def get_sticker_pack_info(self, sticker_pack_id: str) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/sticker-collection/{sticker_pack_id}?includeStickers=true", headers=self.get_headers())
-		return ObjectCreator(response.json()["stickerCollection"])
+		return ObjectCreator(response.json())
 
 	def get_sticker_packs(self) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/sticker-collection?includeStickers=false&type=my-active-collection", headers=self.get_headers())
-		return ObjectCreator(response.json()["stickerCollection"])
+		return ObjectCreator(response.json())
 
 	def get_community_stickers(self) -> ObjectCreator:
 
@@ -291,7 +309,7 @@ class CommunityClient(Client):
 	def get_sticker_collection(self, collectionId: str) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/sticker-collection/{collectionId}?includeStickers=true", headers=self.get_headers())
-		return ObjectCreator(response.json()["stickerCollection"])
+		return ObjectCreator(response.json())
 
 
 
@@ -325,12 +343,12 @@ class CommunityClient(Client):
 	def get_user_following(self, userId: str, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile/{userId}/joined?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["userProfileList"])
+		return ObjectCreator(response.json())
 
 	def get_user_followers(self, userId: str, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile/{userId}/member?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["userProfileList"])
+		return ObjectCreator(response.json())
 
 	def get_user_visitors(self, userId: str, start: int = 0, size: int = 25) -> ObjectCreator:
 
@@ -347,7 +365,7 @@ class CommunityClient(Client):
 	def get_user_achievements(self, userId: str) -> ObjectCreator:
 	
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile/{userId}/achievements", headers=self.get_headers())
-		return ObjectCreator(response.json()["achievements"])
+		return ObjectCreator(response.json())
 
 
 	def get_influencer_fans(self, userId: str, start: int = 0, size: int = 25) -> ObjectCreator:
@@ -404,24 +422,24 @@ class CommunityClient(Client):
 		else: raise exceptions.WrongType(type)
 
 		response = self.make_request(method="GET", endpoint=f"/g/s-x{self.comId}/community/leaderboard?rankingType={rankingType}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["userProfileList"])
+		return ObjectCreator(response.json())
 
 
 	def get_blocked_users(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"{self.api}/x{self.comId}/s/block?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["userProfileList"])
+		return ObjectCreator(response.json())
 
 	def get_blocker_users(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"{self.api}/x{self.comId}/s/block?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["blockerUidList"])
+		return ObjectCreator(response.json())
 
 
 	def search_users(self, nickname: str, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"{self.api}/s/user-profile?type=name&q={nickname}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["userProfileList"])
+		return ObjectCreator(response.json())
 
 	def get_tipped_users(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, chatId: str = None, start: int = 0, size: int = 25) -> ObjectCreator:
 
@@ -437,7 +455,7 @@ class CommunityClient(Client):
 	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/member?start={start}&size={size}&type=default&cv=1.2", headers=self.get_headers())
-		return ObjectCreator(response.json()["memberList"])
+		return ObjectCreator(response.json())
 
 
 #CHAT=============================
@@ -559,7 +577,7 @@ class CommunityClient(Client):
 	def get_public_chat_threads(self, type: str = "recommended", start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/s/chat/thread?type=public-all&filterType={type}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["threadList"])
+		return ObjectCreator(response.json())
 
 
 	def get_chat_thread(self, chatId: str) -> ObjectCreator:
@@ -909,12 +927,12 @@ class CommunityClient(Client):
 		else: raise exceptions.SpecifyType
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/{part}/comment?sort={sorting}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["commentList"])
+		return ObjectCreator(response.json())
 
 	def get_saved_blogs(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/bookmark?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["bookmarkList"])
+		return ObjectCreator(response.json())
 
 
 
@@ -926,23 +944,23 @@ class CommunityClient(Client):
 	def get_blog_categories(self, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog-category?size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["blogCategoryList"])
+		return ObjectCreator(response.json())
 
 
 	def get_blogs_by_category(self, categoryId: str,start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog-category/{categoryId}/blog-list?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["blogList"])
+		return ObjectCreator(response.json())
 
 	def get_recent_wiki_items(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/item?type=catalog-all&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["itemList"])
+		return ObjectCreator(response.json())
 
 	def get_wiki_categories(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/item-category?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["itemCategoryList"])
+		return ObjectCreator(response.json())
 
 
 	def get_wiki_category(self, categoryId: str, start: int = 0, size: int = 25) -> ObjectCreator:
@@ -954,12 +972,12 @@ class CommunityClient(Client):
 	def get_shared_folder_info(self) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/shared-folder/stats", headers=self.get_headers())
-		return ObjectCreator(response.json()["stats"])
+		return ObjectCreator(response.json())
 
 	def get_shared_folder_files(self, type: str = "latest", start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/shared-folder/files?type={type}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["fileList"])
+		return ObjectCreator(response.json())
 
 
 	def comment(self, message: str = None, stickerId: str = None, userId: str = None, blogId: str = None, wikiId: str = None, replyTo: str = None, isGuest: bool = False) -> int:
@@ -1165,14 +1183,14 @@ class CommunityClient(Client):
 		else: part=f"?"
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/admin/operation{part}pagingType=t&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["adminLogList"])
+		return ObjectCreator(response.json())
 
 
 
 	def get_invite_codes(self, status: str = "normal", start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s-x{self.comId}/community/invitation?status={status}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["communityInvitationList"])
+		return ObjectCreator(response.json())
 
 	def generate_invite_code(self, duration: int = 0, force: bool = True) -> ObjectCreator:
 		data = dumps({
@@ -1182,7 +1200,7 @@ class CommunityClient(Client):
 		})
 
 		response = self.make_request(method="POST", endpoint=f"/g/s-x{self.comId}/community/invitation", data=data, headers=self.get_headers(data=data))
-		return ObjectCreator(response.json()["communityInvitation"])
+		return ObjectCreator(response.json())
 
 
 	def delete_invite_code(self, inviteId: str) -> int:
@@ -1346,7 +1364,7 @@ class CommunityClient(Client):
 	def get_hidden_blogs(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/feed/blog-disabled?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["blogList"])
+		return ObjectCreator(response.json())
 
 
 	def get_featured_users(self, start: int = 0, size: int = 25) -> ObjectCreator:
@@ -1444,7 +1462,7 @@ class CommunityClient(Client):
 	def get_wiki_submissions(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/knowledge-base-request?type=all&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["knowledgeBaseRequestList"])
+		return ObjectCreator(response.json())
 
 
 
@@ -1474,13 +1492,13 @@ class CommunityClient(Client):
 	def get_community_stats(self) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/community/stats", headers=self.get_headers())
-		return ObjectCreator(response.json()["communityStats"])
+		return ObjectCreator(response.json())
 
 	def get_community_user_stats(self, type: str, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		if type.lower() not in ("leader", "curator"):raise exceptions.WrongType(type)
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/community/stats/moderation?type={'leader' if type.lower() == 'leader' else 'curator'}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["userProfileList"])
+		return ObjectCreator(response.json())
 
 
 	def change_welcome_message(self, message: str, isEnabled: bool = True) -> int:
@@ -1522,7 +1540,7 @@ class CommunityClient(Client):
 	def get_notice_list(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/notice?type=management&status=1&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["noticeList"])
+		return ObjectCreator(response.json())
 
 	def delete_pending_role(self, noticeId: str) -> int:
 
@@ -1534,4 +1552,4 @@ class CommunityClient(Client):
 	def get_live_layer(self) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/s/live-layer/homepage?v=2", headers=self.get_headers())
-		return ObjectCreator(response.json()["liveLayerList"])
+		return ObjectCreator(response.json())

@@ -2,6 +2,7 @@ from .socket import SocketHandler, Callbacks
 from .helpers.requester import Requester
 from .helpers.headers import headers, tapjoy, tapjoy_headers
 from .models.objects import ObjectCreator
+from .models.proxy_settings import SocketProxy
 from .helpers import exceptions
 from .helpers.generators import generate_deviceId, generate_user_agent, sid_to_uid
 from .helpers.generators import timezone as _timezone
@@ -37,19 +38,38 @@ class Client(SocketHandler, Requester, Callbacks):
 		bool *socket_trace* - socket trace (Default: False)
 		list *socket_whitelist_communities* - By passing a list of communities the socket will respond only to them (Default: None),
 		bool *socket_old_message_mode* - The socket first writes all messages in a separate thread, and basically takes them from a list (Default: False)
-
+		bool *requests_debug* - Track requests (Default: False)
+		bool *http_connect* - Work with http connection (Default: False)
+		models.proxy_settings.SocketProxy *socket_proxy* - socket proxy settings (Default: SocketProxy())
 	"""
 
 	profile = ObjectCreator()
 	active_live_chats = list()
 
-	def __init__(self, deviceId: str = None, auto_device: bool = False, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", auto_user_agent: bool = False, socket_enabled: bool = True, socket_debug: bool = False, socket_trace: bool = False, socket_whitelist_communities: list = None, socket_old_message_mode: bool = False, proxies: dict = None, certificate_path = None, http_connect: bool = True):
+	def __init__(self,
+		deviceId: str = None,
+		auto_device: bool = False,
+		language: str = "en",
+		user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2",
+		auto_user_agent: bool = False,
+		socket_enabled: bool = True, 
+		socket_debug: bool = False, 
+		socket_trace: bool = False, 
+		socket_whitelist_communities: list = None, 
+		socket_old_message_mode: bool = False, 
+		proxies: dict = None, 
+		certificate_path = None, 
+		http_connect: bool = True, 
+		requests_debug: bool = False,
+		socket_proxy: SocketProxy = SocketProxy()
+		):
+		
 		if http_connect:
 			urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-		Requester.__init__(self, session=Session(), proxies=proxies, verify=certificate_path, http_connect=http_connect)
+		Requester.__init__(self, session=Session(), proxies=proxies, verify=certificate_path, http_connect=http_connect, requests_debug=requests_debug)
 		self.socket_enabled=socket_enabled
 		if socket_enabled:
-			SocketHandler.__init__(self, old_message_mode=socket_old_message_mode, whitelist_communities=socket_whitelist_communities, sock_trace=socket_trace, debug=socket_debug)
+			SocketHandler.__init__(self, old_message_mode=socket_old_message_mode, whitelist_communities=socket_whitelist_communities, sock_trace=socket_trace, debug=socket_debug, socket_proxy=socket_proxy)
 			Callbacks.__init__(self)
 		self.device_id = deviceId if deviceId else generate_deviceId()
 		self.auto_device = auto_device
@@ -61,12 +81,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def __repr__(self):
 		return repr(f"sid={self.profile.sid}, userId={self.profile.userId}, deviceId={self.deviceId}, user_agent={self.user_agent}, language={self.language}")
 
-
-	def __del__(self):
-		self.run = False
 		
-
-
 	@property
 	def deviceId(self) -> str:
 		return generate_deviceId() if self.auto_device else self.device_id
@@ -409,7 +424,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_wallet_history(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/wallet/coin/history?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["coinHistoryList"])
+		return ObjectCreator(response.json())
 
 	def wallet_config(self, level: int) -> int:
 
@@ -472,7 +487,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_subscriptions(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/store/subscription?objectType=122&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["storeSubscriptionItemList"])
+		return ObjectCreator(response.json())
 
 
 
@@ -523,12 +538,12 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_user_following(self, userId: str, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/user-profile/{userId}/joined?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["userProfileList"])
+		return ObjectCreator(response.json())
 
 	def get_user_followers(self, userId: str, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/user-profile/{userId}/member?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["userProfileList"])
+		return ObjectCreator(response.json())
 
 	def get_user_visitors(self, userId: str, start: int = 0, size: int = 25) -> ObjectCreator:
 
@@ -539,20 +554,20 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_blocked_users(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/block?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["userProfileList"])
+		return ObjectCreator(response.json())
 
 
 	def get_blocker_users(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/block/full-list?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["blockerUidList"])
+		return ObjectCreator(response.json())
 
 
 	def get_wall_comments(self, userId: str, sorting: str, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		if sorting.lower() not in ("newest", "oldest", "vote"): raise exceptions.WrongType(sorting)
 		response = self.make_request(method="GET", endpoint=f"/g/s/user-profile/{userId}/g-comment?sort={sorting}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["commentList"])
+		return ObjectCreator(response.json())
 
 	def visit(self, userId: str) -> int:
 
@@ -599,13 +614,13 @@ class Client(SocketHandler, Requester, Callbacks):
 	def my_managed_communities(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/community/managed?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["communityList"])
+		return ObjectCreator(response.json())
 
 
 	def get_public_communities(self, language: str = None, size: int = 25) -> dict:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/topic/0/feed/community?language={language if language else self.language}&type=web-explore&categoryKey=recommendation&size={size}&pagingType=t", headers=self.get_headers())
-		return ObjectCreator(response.json()["communityList"])
+		return ObjectCreator(response.json())
 
 
 	def get_community_info(self, comId: str) -> ObjectCreator:
@@ -617,7 +632,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def search_community(self, aminoId: str) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/search/amino-id-and-link?q={aminoId}", headers=self.get_headers())
-		return ObjectCreator(response.json()["resultList"])
+		return ObjectCreator(response.json())
 
 	def join_community(self, comId: str, invitationId: str = None) -> int:
 
@@ -676,14 +691,14 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_linked_communities(self, userId: str) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/user-profile/{userId}/linked-community", headers=self.get_headers())
-		return ObjectCreator(response.json()["linkedCommunityList"])
+		return ObjectCreator(response.json())
 
 
 
 	def get_unlinked_communities(self, userId: str) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/user-profile/{userId}/linked-community", headers=self.get_headers())
-		return ObjectCreator(response.json()["unlinkedCommunityList"])
+		return ObjectCreator(response.json())
 
 
 
@@ -765,7 +780,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_my_chats(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/chat/thread?type=joined-me&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["threadList"])
+		return ObjectCreator(response.json())
 
 
 	def get_chat_thread(self, chatId: str) -> ObjectCreator:
@@ -777,7 +792,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/chat/thread/{chatId}/member?start={start}&size={size}&type=default&cv=1.2", headers=self.get_headers())
-		return ObjectCreator(response.json()["memberList"])
+		return ObjectCreator(response.json())
 
 	def get_chat_messages(self, chatId: str, size: int = 25, pageToken: str = None) -> ObjectCreator:
 
@@ -987,7 +1002,7 @@ class Client(SocketHandler, Requester, Callbacks):
 		else: raise exceptions.SpecifyType
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/{part}/comment?sort={sorting}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["commentList"])
+		return ObjectCreator(response.json())
 
 
 
@@ -1097,9 +1112,9 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_ta_announcements(self, language: str = None, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		language = language if language else self.language
-		if language not in self.get_supported_languages(size=100): raise exceptions.UnsupportedLanguage(language)
+		if language not in self.get_supported_languages(size=100).supportedLanguages: raise exceptions.UnsupportedLanguage(language)
 		response = self.make_request(method="GET", endpoint=f"/g/s/announcement?language={language}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["blogList"])
+		return ObjectCreator(response.json())
 
 
 
@@ -1118,7 +1133,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_supported_languages(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/community-collection/supported-languages?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["supportedLanguages"])
+		return ObjectCreator(response.json())
 
 
 	def watch_ad(self, userId: str = None) -> int:
@@ -1135,28 +1150,30 @@ class Client(SocketHandler, Requester, Callbacks):
 
 
 	def online(self, comId: int):
+
+		data = {
+			"actions": ["Browsing"],
+			"target":f"ndc://x{comId}/",
+			"ndcId":comId
+		}
+		if data in self.actions_list: return
+		self.actions_list.append(data)
+		self.send_action(message_type=304, body=data)
+
+	def offline(self, comId: int):
 		
 		data = {
 			"actions": ["Browsing"],
 			"target":f"ndc://x{comId}/",
 			"ndcId":comId
 		}
-		if data not in self.actions_list: self.actions_list.append(data)
-		self.send_action(message_type=304, body=data)
-
-	def offline(self, comId: int):
-
-		data = {
-			"actions": ["Browsing"],
-			"target":f"ndc://x{comId}/",
-			"ndcId":comId
-		}
-
-		if data in self.actions_list: self.actions_list.remove(data)
+		if data not in self.actions_list: return
+		self.actions_list.remove(data)
 		self.send_action(message_type=306, body=data)
 
 
 	def browsing_blogs_start(self, comId: int, blogId: str = None, quizId: str = None):
+		if data in self.actions_list: return
 		data = {
 			"actions": ["Browsing"],
 			"target": f"ndc://x{comId}/blog/{blogId or quizId}",
@@ -1166,11 +1183,12 @@ class Client(SocketHandler, Requester, Callbacks):
 				}
 		}
 
-		if data not in self.actions_list: self.actions_list.append(data)
+		self.actions_list.append(data)
 		self.send_action(message_type=304, body=data)
 
 
 	def browsing_blogs_end(self, comId: int, blogId: str = None, quizId: str = None):
+		if data in self.actions_list: return
 		data = {
 			"actions": ["Browsing"],
 			"target": f"ndc://x{comId}/blog/{blogId or quizId}",
@@ -1180,7 +1198,7 @@ class Client(SocketHandler, Requester, Callbacks):
 				}
 		}
 
-		if data in self.actions_list: self.actions_list.remove(data)
+		self.actions_list.remove(data)
 		self.send_action(message_type=306, body=data)
 	
 

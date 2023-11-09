@@ -18,7 +18,7 @@ from amino.helpers.types import (
 
 
 class SocketHandler:
-	socket_url = f"wss://ws{randint(1, 4)}.narvii.com"
+	socket_url = f"wss://ws{randint(1, 4)}.aminoapps.com"
 	ping_time = 1.5
 	actions_list = list()
 	active_live_chats = list()

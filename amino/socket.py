@@ -5,10 +5,12 @@ from threading import Thread
 from random import randint
 from traceback import format_exc
 from datetime import datetime
+import ssl
 
-from .helpers.exceptions import SocketNotStarted
+from .helpers.exceptions import SocketNotStarted, WrongType
 from .helpers.headers import ws_headers
-from amino.models.objects import ObjectCreator
+from .models.objects import ObjectCreator
+from .models.proxy_settings import SocketProxy
 from .helpers.types import (
 	ws_message_methods,
 	ws_chat_action_start,
@@ -21,7 +23,7 @@ from .helpers.types import (
 
 
 class SocketHandler:
-	socket_url = f"wss://ws{randint(1, 4)}.narvii.com"
+	socket_url = f"wss://ws{randint(1, 4)}.aminoapps.com"
 	socket = None
 	ping_time = 1.5
 	socket_thread = None
@@ -31,17 +33,25 @@ class SocketHandler:
 	run = True
 
 
-	def __init__(self, whitelist_communities: list = None, old_message_mode: bool = False, sock_trace: bool = False, debug: bool = False):
+	def __init__(self, socket_proxy: SocketProxy = SocketProxy(), whitelist_communities: list = None, old_message_mode: bool = False, sock_trace: bool = False, debug: bool = False):
 		enableTrace(sock_trace)
 		self.debug = debug
 		self.old_message_mode = old_message_mode
 		self.whitelist = whitelist_communities
+		self.socket_proxy = socket_proxy
 		Thread(target=self.actions_loop).start()
 		if old_message_mode:
 			Thread(target=self.old_message_handler).start()
 
 	def log(self, type: str, message: str):
 		if self.debug:print(f"[{datetime.now()}][WS][{type}]: {message}")
+
+
+
+	def socket_error(self, ws, err):
+		self.log(type="FATAL", message=err)
+
+
 
 
 	def _create_connection(self):
@@ -52,8 +62,8 @@ class SocketHandler:
 				f"{self.socket_url}/?signbody={final.replace('|', '%7C')}",
 				on_message = self.handle_message,
 				header = ws_headers(final=final, sid=self.profile.sid, deviceId=deviceId),
+				on_error = self.socket_error
 			)
-
 
 	def connect(self):
 		try:
@@ -62,15 +72,28 @@ class SocketHandler:
 				self.log("StartError", f"sid is None")
 				return
 			self.socket = self._create_connection()
-			self.socket_thread = Thread(target=self.socket.run_forever)
+			self.socket_thread = Thread(target=self.ws_run_forever)
 			self.socket_thread.start()
 			self.run = True
 			sleep(1.5)
-			Thread(target=self.connection_support).start()
 			self.log("Start", f"Connection established")
 		except Exception as e:
 			self.log("StartError", f"Error while starting Socket : {e}")
 
+	def ws_run_forever(self):
+		if not isinstance(self.socket_proxy, SocketProxy):raise WrongType(f"type socket_proxy != class SocketProxy")
+		self.socket.run_forever(
+			proxy_type=self.socket_proxy.proxy_type,
+			sslopt={"cert_reqs": ssl.CERT_NONE},
+			skip_utf8_validation=True,
+			http_proxy_host=self.socket_proxy.http_proxy_host,
+			http_proxy_port=self.socket_proxy.http_proxy_port,
+			http_proxy_auth=self.socket_proxy.http_proxy_auth,
+			ping_interval=self.ping_time*2,
+			ping_payload=dumps({
+				"t": 116,
+				"o": {"threadChannelUserInfoList": []},
+			}))
 
 	def close(self):
 		self.log("Disconnect", f"Closing Socket")
@@ -81,13 +104,6 @@ class SocketHandler:
 			self.log("Disconnect", f"Socket closed")
 		except Exception as e:
 			self.log("CloseError", f"Error while closing Socket : {e}")
-
-
-	def connection_support(self):
-		while self.run:
-			self.send_action(116, {"threadChannelUserInfoList": []})
-			sleep(self.ping_time)
-
 
 
 	def send_action(self, message_type: int, body: dict):

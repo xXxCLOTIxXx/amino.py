@@ -28,15 +28,31 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 		bool *socket_trace* - socket trace (Default: False)
 		list *socket_whitelist_communities* - By passing a list of communities the socket will respond only to them (Default: None),
 		bool *socket_old_message_mode* - The socket first writes all messages in a separate thread, and basically takes them from a list (Default: False)
-
+		bool *requests_debug* - Track requests (Default: False)
+		bool *http_connect* - Work with http connection (Default: False)
 	"""
 
 	profile = AsyncObjectCreator()
 
-	def __init__(self, deviceId: str = None, auto_device: bool = False, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", auto_user_agent: bool = False, socket_enabled: bool = True, socket_debug: bool = False, socket_whitelist_communities: list = None, proxies: dict = None, certificate_path = None, http_connect: bool = True):
+	def __init__(self,
+		deviceId: str = None,
+		auto_device: bool = False,
+		language: str = "en",
+		user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2",
+		auto_user_agent: bool = False,
+		socket_enabled: bool = True,
+		socket_debug: bool = False,
+		socket_whitelist_communities: list = None,
+		proxies: dict = None,
+		certificate_path = None,
+		http_connect: bool = True,
+		requests_debug: bool = False):
+		
+		
+		
 		if http_connect:
 			urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-		AsyncRequester.__init__(self, session=ClientSession(), proxies=proxies, verify=certificate_path, http_connect=http_connect)
+		AsyncRequester.__init__(self, session=ClientSession(), proxies=proxies, verify=certificate_path, http_connect=http_connect, requests_debug=requests_debug)
 		if socket_enabled:
 			SocketHandler.__init__(self, whitelist_communities=socket_whitelist_communities, debug=socket_debug)
 			Callbacks.__init__(self)
@@ -177,13 +193,14 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 		return await self.call(data)
 
 	async def online(self, comId: int):
-		
+
 		data = {
 			"actions": ["Browsing"],
 			"target":f"ndc://x{comId}/",
 			"ndcId":comId
 		}
-		if data not in self.actions_list: self.actions_list.append(data)
+		if data in self.actions_list: return
+		self.actions_list.append(data)
 		await self.send_action(message_type=304, body=data)
 
 	async def offline(self, comId: int):
@@ -193,8 +210,8 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 			"target":f"ndc://x{comId}/",
 			"ndcId":comId
 		}
-
-		if data in self.actions_list: self.actions_list.remove(data)
+		if data not in self.actions_list: return
+		self.actions_list.remove(data)
 		await self.send_action(message_type=306, body=data)
 
 
