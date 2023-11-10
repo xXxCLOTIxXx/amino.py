@@ -1,6 +1,5 @@
 from .client import Client
 from .community_client import CommunityClient
-from .full_client import FullClient
 from .helpers import generators, exceptions
 from . import asynclib
 from . import models
@@ -11,11 +10,31 @@ from os import system as s
 from json import loads
 from requests import get
 
+
+def create_community_client(client: Client, comId: int = None, community_link: str = None, aminoId: str = None):
+	return CommunityClient(
+		comId=comId,
+		community_link=community_link,
+		aminoId=aminoId,
+		profile=client.profile,
+		language=client.language,
+		user_agent=client.user_agent,
+		auto_user_agent=client.auto_user_agent,
+		deviceId=client.deviceId,
+		auto_device=client.auto_device,
+		proxies=client.proxies,
+		certificate_path=client.verify,
+		http_connect=client.http_connect,
+		requests_debug=client.requests_debug
+	)
+
+
+
 __title__ = 'amino.api'
 __author__ = 'Xsarz'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2023-2024 Xsarz'
-__version__ = '0.2.5.3'
+__version__ = '0.2.5.4'
 try:__newest__ = loads(get("https://pypi.org/pypi/amino.api/json").text)["info"]["version"]
 except:__newest__ = __version__
 

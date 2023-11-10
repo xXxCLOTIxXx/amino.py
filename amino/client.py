@@ -617,7 +617,7 @@ class Client(SocketHandler, Requester, Callbacks):
 		return ObjectCreator(response.json())
 
 
-	def get_public_communities(self, language: str = None, size: int = 25) -> dict:
+	def get_public_communities(self, language: str = None, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/topic/0/feed/community?language={language if language else self.language}&type=web-explore&categoryKey=recommendation&size={size}&pagingType=t", headers=self.get_headers())
 		return ObjectCreator(response.json())
@@ -626,7 +626,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_community_info(self, comId: str) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s-x{comId}/community/info?withInfluencerList=1&withTopicList=true&influencerListOrderStrategy=fansCount", headers=self.get_headers()).json()
-		return ObjectCreator(response["community"])
+		return ObjectCreator(response.json()["community"])
 
 
 	def search_community(self, aminoId: str) -> ObjectCreator:
@@ -1126,7 +1126,7 @@ class Client(SocketHandler, Requester, Callbacks):
 		else: raise exceptions.SpecifyType(fileType)
 		data = file.read()
 
-		response = self.make_request(method="POST", endpoint="/g/s/media/upload", body=data, headers=self.get_headers(data=data, content_type=fileType))
+		response = self.make_request(method="POST", endpoint="/g/s/media/upload", data=data, headers=self.get_headers(data=data, content_type=fileType))
 		return response.json()["mediaValue"]
 
 

@@ -18,6 +18,7 @@ class Requester:
 		self.session = session
 		self.proxies = proxies
 		self.verify = verify
+		self.http_connect=http_connect
 		self.requests_debug = requests_debug
 		if http_connect is True:
 			self.api = "http://service.aminoapps.com:80/api/v1"
@@ -50,6 +51,7 @@ class AsyncRequester:
 		self.session = session
 		self.proxies = proxies
 		self.verify = verify
+		self.http_connect=http_connect
 		self.requests_debug=requests_debug
 		if http_connect is True:
 			self.api = "http://service.aminoapps.com:80/api/v1"
