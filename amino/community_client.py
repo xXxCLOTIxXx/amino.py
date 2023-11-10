@@ -337,7 +337,7 @@ class CommunityClient(Client):
 	def get_user_info(self, userId: str) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile/{userId}", headers=self.get_headers())
-		return ObjectCreator(response.json()["userProfile"])
+		return ObjectCreator(response.json())
 
 
 	def get_user_following(self, userId: str, start: int = 0, size: int = 25) -> ObjectCreator:
@@ -481,7 +481,7 @@ class CommunityClient(Client):
 
 		data = dumps(data)
 		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread", data=data, headers=self.get_headers(data=data))
-		return ObjectCreator(response.json()["thread"])
+		return ObjectCreator(response.json())
 
 
 	def do_not_disturb_chat(self, chatId: str, doNotDisturb: bool = True) -> int:
@@ -572,7 +572,7 @@ class CommunityClient(Client):
 	def get_chat_threads(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/chat/thread?type=joined-me&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json()["threadList"])
+		return ObjectCreator(response.json())
 
 	def get_public_chat_threads(self, type: str = "recommended", start: int = 0, size: int = 25) -> ObjectCreator:
 
@@ -583,7 +583,7 @@ class CommunityClient(Client):
 	def get_chat_thread(self, chatId: str) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}", headers=self.get_headers())
-		return ObjectCreator(response.json()["thread"])
+		return ObjectCreator(response.json())
 
 
 	def get_chat_messages(self, chatId: str, size: int = 25, pageToken: str = None) -> ObjectCreator:
@@ -594,8 +594,8 @@ class CommunityClient(Client):
 
 	def get_message_info(self, chatId: str, messageId: str) -> ObjectCreator:
 
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/message/{messageId}", headers=self.get_headers()).json()
-		return ObjectCreator(response["message"])
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/message/{messageId}", headers=self.get_headers())
+		return ObjectCreator(response.json())
 
 
 	def send_message(self, chatId: str, message: str = None, messageType: int = 0, file: BinaryIO = None, fileType: str = None, replyTo: str = None, mentionUserIds: list = None, stickerId: str = None, embedId: str = None, embedType: int = None, embedLink: str = None, embedTitle: str = None, embedContent: str = None, embedImage: BinaryIO = None) -> int:
@@ -743,7 +743,7 @@ class CommunityClient(Client):
 			"timestamp": int(timestamp() * 1000)
 		})
 
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/vvchat-permission", headers=self.get_headers())
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/vvchat-permission", data=data, headers=self.get_headers(data=data))
 		return response.status_code
 
 
@@ -913,8 +913,8 @@ class CommunityClient(Client):
 		elif wikiId:part=f"item/{wikiId}"
 		else: raise exceptions.SpecifyType
 
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/{part}", headers=self.get_headers()).json()
-		return ObjectCreator(response.get("file", response))
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/{part}", headers=self.get_headers())
+		return ObjectCreator(response.json())
 
 
 	def get_comments(self, userId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, sorting: str = "newest", start: int = 0, size: int = 25) -> ObjectCreator:

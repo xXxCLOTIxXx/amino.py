@@ -163,7 +163,9 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 
 	async def login_sid(self, sid: str, need_account_info: bool = False) -> AsyncObjectCreator:
 		data = {"sid": sid, "auid": sid_to_uid(sid)}
-		if need_account_info:data["userProfile"]=await self.get_user_info(sid_to_uid(sid))
+		if need_account_info:
+			up = await self.get_user_info(sid_to_uid(sid))
+			data["userProfile"]=up.userProfile
 		self.profile=AsyncObjectCreator(data)
 		if self.socket_enabled:await self.connect()
 		return self.profile
@@ -422,8 +424,7 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 	async def get_account_info(self) -> AsyncObjectCreator:
 
 		response = await self.make_request(method="GET", endpoint="/g/s/account", headers=self.get_headers())
-		json = await response.json()
-		return AsyncObjectCreator(json["account"])
+		return AsyncObjectCreator(await response.json())
 
 
 
@@ -438,8 +439,7 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 	async def get_wallet_info(self) -> AsyncObjectCreator:
 
 		response = await self.make_request(method="GET", endpoint="/g/s/wallet", headers=self.get_headers())
-		json = await response.json()
-		return AsyncObjectCreator(json["wallet"])
+		return AsyncObjectCreator(await response.json())
 
 
 	async def get_wallet_history(self, start: int = 0, size: int = 25) -> AsyncObjectCreator:
@@ -516,8 +516,7 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 	async def get_from_link(self, link: str) -> AsyncObjectCreator:
 
 		response = await self.make_request(method="GET", endpoint=f"/g/s/link-resolution?q={link}", headers=self.get_headers())
-		json = await response.json()
-		return AsyncObjectCreator(json["linkInfoV2"])
+		return AsyncObjectCreator(await response.json())
 	
 	async def link_identify(self, link: str) -> AsyncObjectCreator:
 
@@ -540,8 +539,7 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 		})
 
 		response = await self.make_request(method="GET", endpoint=f"/g/{f's-x{comId}' if comId else 's'}/link-resolution", data=data, headers=self.get_headers(data=data))
-		json = await response.json()
-		return AsyncObjectCreator(json["linkInfoV2"])
+		return AsyncObjectCreator(await response.json())
 
 
 
@@ -550,8 +548,7 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 	async def get_user_info(self, userId: str) -> AsyncObjectCreator:
 
 		response = await self.make_request(method="GET", endpoint=f"/g/s/user-profile/{userId}", headers=self.get_headers())
-		json = await response.json()
-		return AsyncObjectCreator(json["userProfile"])
+		return AsyncObjectCreator(await response.json())
 
 	async def get_all_users(self, start: int = 0, size: int = 25) -> AsyncObjectCreator:
 
@@ -650,8 +647,7 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 	async def get_community_info(self, comId: str) -> AsyncObjectCreator:
 
 		response = await self.make_request(method="GET", endpoint=f"/g/s-x{comId}/community/info?withInfluencerList=1&withTopicList=true&influencerListOrderStrategy=fansCount", headers=self.get_headers()).json()
-		json = await response.json()
-		return AsyncObjectCreator(json["community"])
+		return AsyncObjectCreator(await response.json())
 
 
 	async def search_community(self, aminoId: str) -> AsyncObjectCreator:
@@ -749,8 +745,7 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 
 		data = dumps(data)
 		response = await self.make_request(method="POST", endpoint=f"/g/s/chat/thread", data=data, headers=self.get_headers(data=data))
-		json = await response.json()
-		return AsyncObjectCreator(json["thread"])
+		return AsyncObjectCreator(await response.json())
 
 
 	async def do_not_disturb_chat(self, chatId: str, doNotDisturb: bool = True) -> int:
@@ -812,8 +807,7 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 	async def get_chat_thread(self, chatId: str) -> AsyncObjectCreator:
 
 		response = await self.make_request(method="GET", endpoint=f"/g/s/chat/thread/{chatId}", headers=self.get_headers())
-		json=await response.json()
-		return AsyncObjectCreator(json["thread"])
+		return AsyncObjectCreator(await response.json())
 
 
 	async def get_chat_users(self, chatId: str, start: int = 0, size: int = 25) -> AsyncObjectCreator:
@@ -830,8 +824,7 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 	async def get_message_info(self, chatId: str, messageId: str) -> AsyncObjectCreator:
 
 		response = await self.make_request(method="GET", endpoint=f"/g/s/chat/thread/{chatId}/message/{messageId}", headers=self.get_headers())
-		json=await response.json()
-		return AsyncObjectCreator(json["message"])
+		return AsyncObjectCreator(await response.json())
 
 
 	async def join_chat(self, chatId: str) -> int:
@@ -870,7 +863,7 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 		})
 
 
-		response = await self.make_request(method="POST", endpoint=f"/g/s/chat/thread/{chatId}/transfer-organizer", data=dumps({}), headers=self.get_headers(data=dumps({})))
+		response = await self.make_request(method="POST", endpoint=f"/g/s/chat/thread/{chatId}/transfer-organizer", data=data, headers=self.get_headers(data=data))
 		return response.status
 
 	async def accept_host(self, chatId: str, requestId: str) -> int:
@@ -1018,8 +1011,7 @@ class Client(AsyncRequester, SocketHandler, Callbacks):
 		else: raise exceptions.SpecifyType
 
 		response = await self.make_request(method="GET", endpoint=f"/g/s/{part}", headers=self.get_headers())
-		json = await response.json()
-		return AsyncObjectCreator(json.get("file", json))
+		return AsyncObjectCreator(await response.json())
 
 
 	async def get_blog_comments(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, sorting: str = "newest", start: int = 0, size: int = 25) -> AsyncObjectCreator:

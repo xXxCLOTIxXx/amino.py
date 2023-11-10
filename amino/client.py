@@ -161,7 +161,7 @@ class Client(SocketHandler, Requester, Callbacks):
 
 	def login_sid(self, sid: str, need_account_info: bool = False) -> ObjectCreator:
 		data = {"sid": sid, "auid": sid_to_uid(sid)}
-		if need_account_info:data["userProfile"]=self.get_user_info(sid_to_uid(sid))
+		if need_account_info:data["userProfile"]=self.get_user_info(sid_to_uid(sid)).userProfile
 		self.profile=ObjectCreator(data)
 		if self.socket_enabled:self.connect()
 		return self.profile
@@ -403,7 +403,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_account_info(self) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint="/g/s/account", headers=self.get_headers())
-		return ObjectCreator(response.json()["account"])
+		return ObjectCreator(response.json())
 
 
 
@@ -418,7 +418,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_wallet_info(self) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint="/g/s/wallet", headers=self.get_headers())
-		return ObjectCreator(response.json()["wallet"])
+		return ObjectCreator(response.json())
 
 
 	def get_wallet_history(self, start: int = 0, size: int = 25) -> ObjectCreator:
@@ -518,7 +518,7 @@ class Client(SocketHandler, Requester, Callbacks):
 		})
 
 		response = self.make_request(method="GET", endpoint=f"/g/{f's-x{comId}' if comId else 's'}/link-resolution", data=data, headers=self.get_headers(data=data))
-		return ObjectCreator(response.json()["linkInfoV2"])
+		return ObjectCreator(response.json())
 
 
 
@@ -527,7 +527,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_user_info(self, userId: str) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/user-profile/{userId}", headers=self.get_headers())
-		return ObjectCreator(response.json()["userProfile"])
+		return ObjectCreator(response.json())
 
 	def get_all_users(self, start: int = 0, size: int = 25) -> ObjectCreator:
 
@@ -626,7 +626,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_community_info(self, comId: str) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s-x{comId}/community/info?withInfluencerList=1&withTopicList=true&influencerListOrderStrategy=fansCount", headers=self.get_headers()).json()
-		return ObjectCreator(response.json()["community"])
+		return ObjectCreator(response.json())
 
 
 	def search_community(self, aminoId: str) -> ObjectCreator:
@@ -724,7 +724,7 @@ class Client(SocketHandler, Requester, Callbacks):
 
 		data = dumps(data)
 		response = self.make_request(method="POST", endpoint=f"/g/s/chat/thread", data=data, headers=self.get_headers(data=data))
-		return ObjectCreator(response.json()["thread"])
+		return ObjectCreator(response.json())
 
 
 	def do_not_disturb_chat(self, chatId: str, doNotDisturb: bool = True) -> int:
@@ -786,7 +786,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_chat_thread(self, chatId: str) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/chat/thread/{chatId}", headers=self.get_headers())
-		return ObjectCreator(response.json()["thread"])
+		return ObjectCreator(response.json())
 
 
 	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25) -> ObjectCreator:
@@ -803,7 +803,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_message_info(self, chatId: str, messageId: str) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/chat/thread/{chatId}/message/{messageId}", headers=self.get_headers())
-		return ObjectCreator(response.json()["message"])
+		return ObjectCreator(response.json())
 
 
 	def join_chat(self, chatId: str) -> int:
@@ -990,7 +990,7 @@ class Client(SocketHandler, Requester, Callbacks):
 		else: raise exceptions.SpecifyType
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/{part}", headers=self.get_headers()).json()
-		return ObjectCreator(response.get("file", response))
+		return ObjectCreator(response.json())
 
 
 	def get_blog_comments(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, sorting: str = "newest", start: int = 0, size: int = 25) -> ObjectCreator:
