@@ -76,6 +76,7 @@ class SocketHandler:
 			self.socket_thread.start()
 			self.run = True
 			sleep(1.5)
+			Thread(target=self.connection_support).start()
 			self.log("Start", f"Connection established")
 		except Exception as e:
 			self.log("StartError", f"Error while starting Socket : {e}")
@@ -90,10 +91,7 @@ class SocketHandler:
 			http_proxy_port=self.socket_proxy.http_proxy_port,
 			http_proxy_auth=self.socket_proxy.http_proxy_auth,
 			ping_interval=self.ping_time*2,
-			ping_payload=dumps({
-				"t": 116,
-				"o": {"threadChannelUserInfoList": []},
-			}))
+			)
 
 	def close(self):
 		self.log("Disconnect", f"Closing Socket")
@@ -159,6 +157,13 @@ class SocketHandler:
 	def vc_loop(self, comId: int, chatId: str, joinType: str):
 		while chatId in self.active_live_chats and self.run:
 			self.join_live_chat(chatId=chatId, comId=comId, as_viewer=joinType)
+			sleep(self.ping_time)
+
+
+
+	def connection_support(self):
+		while self.run:
+			self.send_action(116, {"threadChannelUserInfoList": []})
 			sleep(self.ping_time)
 
 

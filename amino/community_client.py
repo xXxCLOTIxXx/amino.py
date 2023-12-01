@@ -601,7 +601,7 @@ class CommunityClient(Client):
 	def send_message(self, chatId: str, message: str = None, messageType: int = 0, file: BinaryIO = None, fileType: str = None, replyTo: str = None, mentionUserIds: list = None, stickerId: str = None, embedId: str = None, embedType: int = None, embedLink: str = None, embedTitle: str = None, embedContent: str = None, embedImage: BinaryIO = None) -> int:
 
 		if message is not None and file is None and mentionUserIds is not None:
-			message = message.replace("<@", "‎‏").replace("@>", "‬‭")
+			message = message.replace("<@", "‎‏@").replace("@>", "‬‭")
 
 		mentions = []
 		if mentionUserIds:
@@ -1166,6 +1166,102 @@ class CommunityClient(Client):
 		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/settings", data=data, headers=self.get_headers(data=data))
 		return response.status_code
 	
+
+
+	def set_community_topics(self, topicId: int) -> int:
+
+		data = dumps({
+			"mainTopics": [topicId],
+			"timestamp": int(timestamp() * 1000)
+		})
+
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/main-topics", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+	def get_topics_list(self) -> ObjectCreator:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/community/main-topics", headers=self.get_headers())
+		return ObjectCreator(response.json())
+
+	def create_mailing(self, message: str, url: str, scheduled_time: int = 0) -> ObjectCreator:
+		data = dumps({
+			"payload": {
+				"aps": {
+					"alert": message
+				},
+				"u": url
+			},
+			"timestamp": int(timestamp() * 1000),
+			"scheduledTime": scheduled_time
+		})
+
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/push", data=data, headers=self.get_headers(data=data))
+		return ObjectCreator(response.json())
+
+
+	def get_recent_mailings(self, scheduling: bool = False) -> ObjectCreator:
+
+		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/push?status={'1%2C4%2C2' if scheduling is True else '3%2C5%2C5%2C8%2C9'}", headers=self.get_headers())
+		return ObjectCreator(response.json())
+
+	def delete_mailing(self, pushTaskId: str) -> int:
+		data = dumps({
+			"status": 5,
+			"timestamp": int(timestamp() * 1000)
+		})
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/push/{pushTaskId}/status", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+
+
+	def community_review_request(self) -> ObjectCreator:
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/review-request", headers=self.get_headers())
+		return ObjectCreator(response.json())
+
+
+	def change_community_join_permission(self, permission: str) -> int:
+		"""
+		0 - open
+		1 - need a solution 
+		2 - close
+		"""
+		if permission not in (0, 1, 2): raise exceptions.SpecifyType(permission)
+		data = dumps({
+			"joinType": permission,
+			"timestamp": int(timestamp() * 1000)
+		})
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/settings", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+	def change_community_searchable(self, searchable: bool = True) -> int:
+		data = dumps({
+			"searchable": searchable,
+			"timestamp": int(timestamp() * 1000)
+		})
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/settings", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+	def change_community_invite_permission(self, onlyAdmins: bool = True) -> int:
+		data = dumps({
+			"path": "general.invitePermission",
+			"value": 2 if onlyAdmins is True else 1,
+			"timestamp": int(timestamp() * 1000),
+			"action": "set"
+		})
+
+		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/configuration", data=data, headers=self.get_headers(data=data))
+		return response.status_code
+
+
+
+
 	def upload_themepack(self, file: BinaryIO) -> ObjectCreator:
 
 		response = self.make_request(method="POST", endpoint=f"/s/media/upload/target/community-theme-pack", data=file.read(), headers=self.get_headers(data=file.read()))

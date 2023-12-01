@@ -6,11 +6,11 @@ class ObjectCreator:
 		self.json = self.add_standard_keys(data)
 
 	@property
-	def value(self):
+	def get_value(self):
 		return self.json
 
 	@property
-	def type(self):
+	def get_value_type(self):
 		return type(self.json)
 
 	def get(self, key, default = None):

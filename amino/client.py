@@ -495,7 +495,7 @@ class Client(SocketHandler, Requester, Callbacks):
 	def get_from_link(self, link: str) -> ObjectCreator:
 
 		response = self.make_request(method="GET", endpoint=f"/g/s/link-resolution?q={link}", headers=self.get_headers())
-		return ObjectCreator(response.json()["linkInfoV2"])
+		return ObjectCreator(response.json())
 	
 	def link_identify(self, link: str) -> ObjectCreator:
 
