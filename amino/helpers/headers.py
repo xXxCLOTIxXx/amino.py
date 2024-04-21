@@ -1,23 +1,24 @@
 from .generators import generate_deviceId, signature
 from uuid import uuid4
 
-def headers(data = None, content_type = None, sid: str = None, deviceId: str = None, user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", language: str = "en"):
+def headers(data = None, content_type = None, sid: str = None, deviceId: str = None, user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", language: str = "en", userId: str = None):
 	headers = {
 		"NDCDEVICEID": deviceId if deviceId else generate_deviceId(),
 		"NDCLANG": language.lower(),
 		"Accept-Language": f"{language.lower()}-{language.upper()}",
-		"SMDEVICEID": "20230109055041eecd2b9dd8439235afe4522cb5dacd26011dba6bbfeeb752", 
 		"User-Agent": user_agent,
-		"Content-Type": "application/json; charset=utf-8",
-		"Host": "service.narvii.com",
-		"Accept-Encoding": "gzip",
-		"Connection": "Upgrade"
+		"Content-Type": "application/json",
+		"Host": "service.aminoapps.com",
+		"Accept-Encoding": "identity",
+		"Accept": "*/*",
+		"Connection": "keep-alive",
 		}
 	if data:
 		headers["Content-Length"] = str(len(data))
 		headers["NDC-MSG-SIG"] = signature(data=data)
 	if sid:headers["NDCAUTH"] = f"sid={sid}"
 	if content_type:headers["Content-Type"] = content_type
+	if userId: headers["AUID"] = userId
 	return headers
 
 def ws_headers(final: str, sid: str = None, deviceId: str = None):

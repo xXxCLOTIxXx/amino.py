@@ -43,7 +43,7 @@ class Client(SocketHandler, Requester, Callbacks):
 		models.proxy_settings.SocketProxy *socket_proxy* - socket proxy settings (Default: SocketProxy())
 	"""
 
-	profile = ObjectCreator()
+	profile = ObjectCreator({"uid": None, })
 	active_live_chats = list()
 
 	def __init__(self,
@@ -92,7 +92,7 @@ class Client(SocketHandler, Requester, Callbacks):
 
 
 	def get_headers(self, deviceId: str = None, data = None, content_type: str = None, sid: str = None, user_agent = None, language: str = None) -> dict:
-		return headers(deviceId=deviceId if deviceId else self.deviceId, data=data, content_type=content_type, sid=sid or self.profile.sid, user_agent=user_agent if user_agent else self.user_agent, language=language if language else self.language)
+		return headers(deviceId=deviceId if deviceId else self.deviceId, data=data, content_type=content_type, sid=sid or self.profile.sid, user_agent=user_agent if user_agent else self.user_agent, language=language if language else self.language, userId=self.profile.userId)
 
 	def set_device(self, deviceId: str = None, auto_device: bool = None, set_random_device: bool = False, user_agent: str = None, set_random_user_agent: bool = False) -> str:
 		if auto_device is True: self.auto_device = True
@@ -222,7 +222,7 @@ class Client(SocketHandler, Requester, Callbacks):
 		})
 
 		response = self.make_request(method="POST", endpoint="/g/s/auth/logout", data=data, headers=self.get_headers(data=data, deviceId=deviceId))
-		self.profile = ObjectCreator()
+		self.profile = ObjectCreator({"uid": None, })
 		if self.socket_enabled:self.close()
 		return response.status_code
 

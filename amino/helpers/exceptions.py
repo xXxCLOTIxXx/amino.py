@@ -889,6 +889,7 @@ exceptions_list = {
 }
 
 def check_exceptions(data, status):
+	print(data)
 	try:
 		data = loads(data)
 		try:code = data["api:statuscode"]
