@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 
 info = {
-	"name": "amino.api",
-	"version": "0.2.5.6",
+	"name": "amino.py.api",
+	"version": "0.2.6",
 	"github_page": "https://github.com/xXxCLOTIxXx/amino.py",
 	"download_link": "https://github.com/xXxCLOTIxXx/amino.py/archive/refs/heads/main.zip",
 	"license": "MIT",
@@ -34,10 +34,8 @@ info = {
 	"install_requires": [
 		"requests",
 		"aiohttp",
-		"websocket-client==1.3.1",
-		"websockets",
+		"websocket-client",
 		"ujson",
-		"json_minify"
 
 	]
 
