@@ -25,7 +25,7 @@
 			</td>
 		</tr>
 	</table>
-<p align="center">Library for working with aminoapps servers, below you will see code examples, for more examples see the documentation or the examples folder</p>
+<p align="center">Library for working with aminoapps servers, below you will see code example</p>
 <h1 align="center">Login example</h1>
 
 ```python
