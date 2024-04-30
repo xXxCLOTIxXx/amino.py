@@ -26,6 +26,11 @@
 			</td>
 		</tr>
 	</table>
+	<div align="center">
+		<a href="https://github.com/xXxCLOTIxXx/xXxCLOTIxXx/blob/main/sponsor.md">
+			<img src="https://img.shields.io/static/v1?style=for-the-badge&label=Sponsor project&message=%E2%9D%A4&color=ff69b4" alt="Sponsor project"/>
+		</a>
+	</div>
 <p align="center">Library for working with aminoapps servers, below you will see code examples, for more examples see the documentation or the examples folder</p>
 <h1 align="center">Login example</h1>
 
