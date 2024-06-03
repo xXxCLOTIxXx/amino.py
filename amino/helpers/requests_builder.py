@@ -3,12 +3,17 @@ from ..helpers.generator import signature, generate_deviceId
 from ..objects.constants import (
 	host, api
 )
-from .exceptions import check_exceptions
+from .exceptions import check_exceptions, SpecifyType
+from ..objects.reqObjects import MediaObject
+from ..objects.args import UploadType
 
-from typing import Union
+
 from requests import Session
 from aiohttp import ClientSession
 from ujson import dumps
+from typing import BinaryIO, Union
+from aiofiles.threadpool.binary import AsyncBufferedReader
+from mimetypes import guess_type
 
 
 def header(uid: str = None, sid: str = None, user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", language: str = "en", deviceId: str = None, data: bytes = None, content_type: str = "application/json"):
@@ -17,7 +22,7 @@ def header(uid: str = None, sid: str = None, user_agent: str = "Apple iPhone12,1
 		"NDCLANG": language.lower(),
 		"Accept-Language": f"{language.lower()}-{language.upper()}",
 		"User-Agent": user_agent,
-		"Host": "service.aminoapps.com",
+		"Host": host,
 		"Accept-Encoding":  "gzip, deflate",
 		"Accept": "*/*",
 		"Connection": "keep-alive",
@@ -46,9 +51,9 @@ class requestsBuilder:
 		self.proxies = proxies
 
 
-	def request(self, method: str, endpoint: str, data: Union[str, bytes] = None, successfully: int = 200, timeout=None, base_url: str = api) -> dict:
+	def request(self, method: str, endpoint: str, data: Union[str, bytes] = None, successfully: int = 200, timeout=None, base_url: str = api, content_type= "application/json") -> dict:
 		if isinstance(data, dict): data = dumps(data)
-		if method.lower() == "post":content_type= "application/json" if data is not None else "application/x-www-form-urlencoded"
+		if method.lower() == "post":content_type=content_type if data is not None else "application/x-www-form-urlencoded"
 		else:content_type = None
 
 		resp = self.session.request(method.upper(), f"{base_url}{endpoint}", data=data, headers=header(
@@ -57,6 +62,14 @@ class requestsBuilder:
 			data=data, content_type=content_type),
 			timeout=timeout, proxies=self.proxies)
 		return check_exceptions(resp.text, resp.status_code) if resp.status_code != successfully else resp.json()
+
+
+
+	def upload_media(self, file: BinaryIO) -> MediaObject:
+		fileType = guess_type(file.name)[0]
+		if fileType not in UploadType.all: raise SpecifyType(fileType)
+		return MediaObject(self.request("POST", "/g/s/media/upload", file.read(), content_type=fileType))
+
 
 
 class AsyncRequestsBuilder:
@@ -69,9 +82,9 @@ class AsyncRequestsBuilder:
 		self.proxies = proxies
 
 
-	async def request(self, method: str, endpoint: str, data: Union[str, bytes] = None, successfully: int = 200, timeout=None, base_url: str = api) -> dict:
+	async def request(self, method: str, endpoint: str, data: Union[str, bytes] = None, successfully: int = 200, timeout=None, base_url: str = api, content_type= "application/json") -> dict:
 		if isinstance(data, dict): data = dumps(data)
-		if method.lower() == "post":content_type= "application/json" if data is not None else "application/x-www-form-urlencoded"
+		if method.lower() == "post":content_type=content_type if data is not None else "application/x-www-form-urlencoded"
 		else:content_type = None
 
 		resp = await self.session.request(method.upper(), f"{base_url}{endpoint}", data=data, headers=header(
@@ -80,3 +93,10 @@ class AsyncRequestsBuilder:
 			data=data, content_type=content_type),
 			timeout=timeout, proxy=self.proxies)
 		return check_exceptions(await resp.text(), resp.status) if resp.status != successfully else await resp.json()
+
+
+
+	async def upload_media(self, file: AsyncBufferedReader) -> MediaObject:
+		fileType = guess_type(file.name)[0]
+		if fileType not in UploadType.all: raise SpecifyType(fileType)
+		return MediaObject(self.request("POST", "/g/s/media/upload", await file.read(), content_type=fileType))

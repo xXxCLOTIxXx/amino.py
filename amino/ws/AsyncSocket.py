@@ -4,7 +4,7 @@ from ujson import loads, dumps
 
 
 from ..helpers.exceptions import SocketNotStarted
-from ..objects.ws_event_types import (
+from ..objects.ws.ws_event_types import (
 	ws_message_methods,
 	ws_chat_action_start,
 	ws_chat_action_end,
