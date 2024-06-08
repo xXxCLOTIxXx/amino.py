@@ -1,794 +1,80 @@
+from .objects.auth_data import auth_data
+from .helpers.requests_builder import requestsBuilder
+from .helpers.generator import timezone
+from .helpers.exceptions import SpecifyType, WrongType
 
-from .helpers import exceptions
-from .client import Client
-from .helpers.generators import timezone
-from .models.objects import ObjectCreator
-from .helpers.types import community_modules
+from .objects.args import (
+	RepairMethod, CommunityModules, UsersTypes,
+	AdministratorsRank, VoiceChatJoinPermissions,
+	LeaderboardTypes, Sorting
+)
 
-from json import dumps, loads
 
-from uuid import UUID
-from os import urandom
-from typing import BinaryIO, Union
-from binascii import hexlify
+from typing import Union, BinaryIO
+from uuid import uuid4
 from time import time as timestamp
-from json_minify import json_minify
 from base64 import b64encode
 
-class CommunityClient(Client):
-
-	"""
-	***Community params***
-		[!] Use any of the options to define a community
-		[!!] One of the parameters is required
-
-		int *comId* - Community ID
-		str *community_link* - Community link
-		str *aminoId* - community amino ID
-
-	***account params***
-		[!] Specify the profile parameter or after initializing the CommunityClient, log in to your account
-		[!] CommunityClient(comId=123456).login(email="email", password="password")
-
-		objects.profile *profile* - account profile (Client.login(email="email", password="password") -> objects.profile)
-
-	***server settings***
-		str *language* - Language for response from the server (Default: "en")
-		str *user_agent* - user agent (Default: "Apple iPhone12,1 iOS v15.5 Main/3.12.2")
-		bool *auto_user_agent* - Does each request generate a new user agent? (Default: False)
-		str *deviceId* - device id (Default: None)
-		bool *auto_device* - Does each request generate a new deviceId? (Default: False)
-		str *certificate_path* - path to certificates (Default: None)
-		dict *proxies* - proxies (Default: None)
-		bool *requests_debug* - Track requests (Default: False)
-		bool *http_connect* - Work with http connection (Default: False)
-
-	"""
-
-	def __init__(self,
-		comId: int = None,
-		community_link: str = None,
-		aminoId: str = None, 
-		profile = None,
-		language: str = "en", 
-		user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", 
-		auto_user_agent:  bool = False, 
-		deviceId: str = None, 
-		auto_device: bool = False, 
-		proxies: dict = None, 
-		certificate_path = None, 
-		http_connect: bool = True, 
-		requests_debug: bool = False
-		):
-
-
-		Client.__init__(self, language=language, user_agent=user_agent, auto_user_agent=auto_user_agent, deviceId=deviceId, auto_device=auto_device, socket_enabled=False, proxies=proxies, certificate_path=certificate_path, http_connect=http_connect, requests_debug=requests_debug)
-		if profile:self.profile=profile
-
-		if comId:
-			self.comId=comId
-		elif community_link:
-			self.comId=self.get_from_link(community_link).comId
-		elif aminoId:
-			self.comId=self.get_from_link(f"http://aminoapps.com/c/{aminoId}").comId
-		else:
-			raise exceptions.NoCommunity("Provide a link to the community, comId or aminoId.")
-
+class CommunityClient:
+	req: requestsBuilder
+	comId: str
+	
+	def __init__(self, profile: auth_data, comId: int, proxies: dict = None):
+		self.req = requestsBuilder(proxies=proxies, profile=profile)
+		self.comId = comId
 
 	def __repr__(self):
-		return repr(f"sid={self.profile.sid}, userId={self.profile.userId}, comId={self.comId}, deviceId={self.deviceId}, user_agent={self.user_agent}, language={self.language}")
+		return repr(f"class CommunityClient <sid={self.sid}, userId={self.userId}, comId={self.comId}, deviceId={self.deviceId}, user_agent={self.profile.user_agent}, language={self.profile.language}>")
 
 
-#ACCOUNT=============================
-
-
-	def check_in(self, tz: int = None) -> int:
-		data = dumps({
-			"timezone": tz if tz else timezone(),
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/check-in", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def repair_check_in(self, method: int = 1) -> int:
-		#1 Coins
-		#2 Amino+
-
-		data = dumps({
-			"timestamp": int(timestamp() * 1000),
-			"repairMethod": str(method)
-		})
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/check-in/repair", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def lottery(self, tz: int = None) -> ObjectCreator:
-		data = dumps({
-			"timezone": tz if tz else timezone(),
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/check-in/lottery", data=data, headers=self.get_headers(data=data))
-		return ObjectCreator(response.json())
-
-
-
-	def edit_profile(self, nickname: str = None, content: str = None, icon: BinaryIO = None, chatRequestPrivilege: str = None, imageList: list = None, backgroundImage: str = None, backgroundColor: str = None, titles: list = None, defaultBubbleId: str = None) -> int:
-		
-		mediaList = list()
-		data = {"timestamp": int(timestamp() * 1000)}
-
-		if imageList is not None:
-			for image, caption  in imageList:
-				mediaList.append([100, self.upload_media(image, "image"), caption])
-			data["mediaList"] = mediaList
-
-
-		if nickname: data["nickname"] = nickname
-		if icon: data["icon"] = self.upload_media(icon, "image")
-		if content: data["content"] = content
-		if chatRequestPrivilege: data["extensions"] = {"privilegeOfChatInviteRequest": chatRequestPrivilege}
-		if backgroundImage: data["extensions"] = {"style": {"backgroundMediaList": [[100, backgroundImage, None, None, None]]}}
-		if backgroundColor: data["extensions"] = {"style": {"backgroundColor": backgroundColor}}
-		if defaultBubbleId: data["extensions"] = {"defaultBubbleId": defaultBubbleId}
-
-		if titles:
-			_titles = list
-			for titles, colors in titles:
-				_titles.append({"title": titles, "color": colors})
-			data["extensions"] = {"customTitles": _titles}
-		data = dumps(data)
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/user-profile/{self.profile.userId}", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def apply_avatar_frame(self, avatarId: str, applyToAll: bool = True) -> int:
-
-
-		data = dumps({"frameId": avatarId,
-				"applyToAll": 1 if applyToAll is True else 0,
-				"timestamp": int(timestamp() * 1000)
-				})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/avatar-frame/apply", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def check_notifications(self) -> int:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/notification/checked", headers=self.get_headers())
-		return response.status_code
-
-
-	def delete_notification(self, notificationId: str) -> int:
-
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/notification/{notificationId}", headers=self.get_headers())
-		return response.status_code
-
-
-	def clear_notifications(self) -> int:
-
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/notification", headers=self.get_headers())
-		return response.status_code
-
-
-	def get_notifications(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/notification?pagingType=t&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_notices(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/notice?type=usersV2&status=1&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def promotion(self, noticeId: str, type: str = "accept") -> int:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/notice/{noticeId}/{type}", headers=self.get_headers())
-		return response.status_code
-
-
-	def send_active_obj(self, startTime: int = None, endTime: int = None, optInAdsFlags: int = 2147483647, tz: int = None, timers: list = None, timestamp: int = int(timestamp() * 1000)) -> int: 
-		data = {"userActiveTimeChunkList": [{"start": startTime, "end": endTime}], "timestamp": timestamp, "optInAdsFlags": optInAdsFlags, "timezone": tz if tz else timezone()} 
-		if timers: data["userActiveTimeChunkList"] = timers 
-		data = json_minify(dumps(data))  
-
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/community/stats/user-active-time", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def online_status(self, status: str) -> int:
-
-		if status.lower() not in ("on", "off"): raise exceptions.WrongType(status)
-		data = dumps({
-			"onlineStatus": 1 if status.lower() == "on" else 2,
-			"duration": 86400,
-			"timestamp": int(timestamp() * 1000)
-		})
+	@property
+	def profile(self):
+		return self.req.profile
 	
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/user-profile/{self.profile.userId}/online-status", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+	@property
+	def userId(self):
+		return self.req.profile.uid
 
-#COINS=============================
+	@property
+	def sid(self):
+		return self.req.profile.sid
 
-	def send_coins(self, coins: int, blogId: str = None, chatId: str = None, objectId: str = None, transactionId: str = None) -> int:
+	@property
+	def deviceId(self):
+		return self.req.profile.deviceId
 
-		if transactionId is None: transactionId = str(UUID(hexlify(urandom(16)).decode('ascii')))
 
+
+	def check_in(self, tz: int = None) -> dict:
+		return self.req.request("POST", f"/x{self.comId}/s/check-in", { "timezone": tz if tz else timezone()})
+
+
+	def get_invite_codes(self, status: str = "normal", start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/g/s-x{self.comId}/community/invitation?status={status}&start={start}&size={size}")["communityInvitationList"]
+
+	def generate_invite_code(self, duration: int = 0, force: bool = True):
 
 		data = {
-			"coins": coins,
-			"tippingContext": {"transactionId": transactionId},
-			"timestamp": int(timestamp() * 1000)
+			"duration": duration,
+			"force": force
 		}
+		return self.req.request("POST", f"/g/s-x{self.comId}/community/invitation", data)["communityInvitation"]
 
-		if blogId is not None: url = f"/x{self.comId}/s/blog/{blogId}/tipping"
-		elif chatId is not None: url = f"/x{self.comId}/s/chat/thread/{chatId}/tipping"
-		elif objectId is not None:
-			data["objectId"] = objectId
-			data["objectType"] = 2
-			url = f"/x{self.comId}/s/tipping"
-		else: raise exceptions.SpecifyType()
+	def delete_invite_code(self, inviteId: str):
+		return self.req.request("DELETE", f"/g/s-x{self.comId}/community/invitation/{inviteId}")
 
-		data = dumps(data)
-		response = self.make_request(method="POST", endpoint=url, data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def thank_tip(self, chatId: str, userId: str) -> int:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/tipping/tipped-users/{userId}/thank", headers=self.get_headers())
-		return response.status_code
-
-
-	def subscribe(self, userId: str, autoRenew: str = False, transactionId: str = None):
-		if transactionId is None: transactionId = str(UUID(hexlify(urandom(16)).decode('ascii')))
-
-		data = dumps({
-			"paymentContext": {
-				"transactionId": transactionId,
-				"isAutoRenew": autoRenew
-			},
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/influencer/{userId}/subscribe", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def purchase(self, objectId: str, objectType: int, aminoPlus: bool = True, autoRenew: bool = False) -> int:
-		data = dumps({'objectId': objectId,
-				'objectType': objectType,
-				'v': 1,
-				"timestamp": int(timestamp() * 1000),
-				"paymentContext": {
-					'discountStatus': 1 if aminoPlus is True else 0,
-					'discountValue': 1,
-					'isAutoRenew': autoRenew
-					}
-				})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/store/purchase", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-	def get_store_chat_bubbles(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/store/items?sectionGroupId=chat-bubble&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_store_stickers(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/store/items?sectionGroupId=sticker&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-
-#STICKERS=============================
-
-	def get_sticker_pack_info(self, sticker_pack_id: str) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/sticker-collection/{sticker_pack_id}?includeStickers=true", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_sticker_packs(self) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/sticker-collection?includeStickers=false&type=my-active-collection", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_community_stickers(self) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/sticker-collection?type=community-shared", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_sticker_collection(self, collectionId: str) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/sticker-collection/{collectionId}?includeStickers=true", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-
-#USERS=============================
-
-	def get_all_users(self, type: str = "recent", start: int = 0, size: int = 25) -> ObjectCreator:
-
-		if type.lower() not in ("recent", "banned", "featured", "leaders", "curators"):raise exceptions.WrongType(type)
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile?type={type.lower()}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_online_users(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/live-layer?topic=ndtopic:x{self.comId}:online-members&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_online_favorite_users(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-group/quick-access?type=online&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_user_info(self, userId: str) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile/{userId}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_user_following(self, userId: str, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile/{userId}/joined?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_user_followers(self, userId: str, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile/{userId}/member?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_user_visitors(self, userId: str, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/s/user-profile/{userId}/visitors?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_user_checkins(self, userId: str) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/check-in/stats/{userId}?timezone={timezone()}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_user_achievements(self, userId: str) -> ObjectCreator:
-	
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile/{userId}/achievements", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_influencer_fans(self, userId: str, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile/{userId}/achievements", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def add_to_favorites(self, userId: str) -> int:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/user-group/quick-access/{userId}", headers=self.get_headers())
-		return response.status_code
-
-	def follow(self, userId: Union[str, list]) -> int:
-
-		if isinstance(userId, str):
-			response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/user-profile/{userId}/member", headers=self.get_headers())
-		elif isinstance(userId, list):
-			data = dumps({"targetUidList": userId, "timestamp": int(timestamp() * 1000)})
-			response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/user-profile/{self.profile.userId}/joined", data=data, headers=self.get_headers(data=data))
-		else: raise exceptions.WrongType(userId)
-		return response.status_code
-
-	def unfollow(self, userId: str) -> int:
-
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/user-profile/{self.profile.userId}/joined/{userId}", headers=self.get_headers())
-		return response.status_code
-
-
-	def block(self, userId: str) -> int:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/block/{userId}", headers=self.get_headers())
-		return response.status_code
-
-
-	def unblock(self, userId: str) -> int:
-
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/block/{userId}", headers=self.get_headers())
-		return response.status_code
-
-
-	def visit(self, userId: str) -> int:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile/{userId}?action=visit", headers=self.get_headers())
-		return response.status_code
-
-	def get_leaderboard_info(self, type: str, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		if "24" in type or "hour" in type: rankingType=1
-		elif "7" in type or "day" in type: rankingType=2
-		elif "rep" in type: rankingType=3
-		elif "check" in type: rankingType=4
-		elif "quiz" in type: rankingType=5
-		else: raise exceptions.WrongType(type)
-
-		response = self.make_request(method="GET", endpoint=f"/g/s-x{self.comId}/community/leaderboard?rankingType={rankingType}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_blocked_users(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"{self.api}/x{self.comId}/s/block?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_blocker_users(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"{self.api}/x{self.comId}/s/block?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def search_users(self, nickname: str, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"{self.api}/s/user-profile?type=name&q={nickname}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_tipped_users(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, chatId: str = None, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		if blogId or quizId:part=f"blog/{quizId if quizId else blogId}"
-		elif wikiId:part=f"item/{wikiId}"
-		elif chatId:part=f"chat/thread/{chatId}"
-		elif fileId:part=f"shared-folder/files/{fileId}"
-		else: raise exceptions.SpecifyType()
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/{part}/tipping/tipped-users-summary?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/member?start={start}&size={size}&type=default&cv=1.2", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-#CHAT=============================
-
-	def start_chat(self, userId: Union[str, list], message: str, title: str = None, content: str = None, isGlobal: bool = False, publishToGlobal: bool = False) -> ObjectCreator:
-
-		if isinstance(userId, str): userIds = [userId]
-		elif isinstance(userId, list): userIds = userId
-		else: raise exceptions.WrongType(type(userId))
-
-		data = {
-			"title": title,
-			"inviteeUids": userIds,
-			"initialMessageContent": message,
-			"content": content,
-			"timestamp": int(timestamp() * 1000)
-		}
-
-		if isGlobal is True: data["type"] = 2; data["eventSource"] = "GlobalComposeMenu"
-		else: data["type"] = 0
-		if publishToGlobal is True: data["publishToGlobal"] = 1
-		else: data["publishToGlobal"] = 0
-
-		data = dumps(data)
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread", data=data, headers=self.get_headers(data=data))
-		return ObjectCreator(response.json())
-
-
-	def do_not_disturb_chat(self, chatId: str, doNotDisturb: bool = True) -> int:
-		data = dumps({"alertOption": 2 if doNotDisturb else 1, "timestamp": int(timestamp() * 1000)})
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.userId}/alert", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-	def pin_chat(self, chatId: str, pin: bool = True) -> int:
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/{'pin' if pin else 'unpin'}", headers=self.get_headers())
-		return response.status_code
-
-	def add_co_host(self, chatId: str, userIds: list) -> int:
-			
-		data = dumps({"uidList": userIds, "timestamp": int(timestamp() * 1000)})
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/co-host", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-	def delete_co_host(self, chatId: str, userId: str) -> int:
-
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/co-host/{userId}", headers=self.get_headers())
-		return response.status_code
-
-
-	def edit_chat(self, chatId: str, title: str = None, icon: str = None, backgroundImage: str = None, content: str = None, announcement: str = None, keywords: list = None, pinAnnouncement: bool = None, publishToGlobal: bool = None, canTip: bool = None, viewOnly: bool = None, canInvite: bool = None, fansOnly: bool = None) -> list:
-
-		_data = {"timestamp": int(timestamp() * 1000), "publishToGlobal": 0 if publishToGlobal else 1}
-
-		if title: data["title"] = title
-		if content: data["content"] = content
-		if icon: data["icon"] = icon
-		if keywords: data["keywords"] = keywords
-		if announcement: data["extensions"] = {"announcement": announcement}
-		if pinAnnouncement: data["extensions"] = {"pinAnnouncement": pinAnnouncement}
-		if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
-
-		responses = list()
-		if backgroundImage is not None:
-			data = dumps({"media": [100, backgroundImage, None], "timestamp": int(timestamp() * 1000)})
-			response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.userId}/background", data=data, headers=self.get_headers(data=data))
-			responses.append({"backgroundImage":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
-		if viewOnly is not None:
-			response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/{'enable' if viewOnly else 'disable'}", headers=self.get_headers(content_type="application/x-www-form-urlencoded"))
-			responses.append({"viewOnly":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
-		if canInvite is not None:
-			response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/{'enable' if canInvite else 'disable'}", headers=self.get_headers())
-			responses.append({"canInvite":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
-		if canTip is not None:
-			response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/{'enable' if canTip else 'disable'}", headers=self.get_headers())
-			responses.append({"canTip":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
-		data = dumps(_data)
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}", data=data, headers=self.get_headers(data=data))
-		responses.append({"main":response.status_code if response.status_code!=200 else exceptions.check_exceptions(response.json())})
-		return responses
-
-
-	def invite_to_chat(self, userId: Union[str, list], chatId: str) -> int:
-
-		if isinstance(userId, str): userIds = [userId]
-		elif isinstance(userId, list): userIds = userId
-		else: raise exceptions.WrongType(type(userId))
-
-		data = dumps({
-			"uids": userIds,
-			"timestamp": int(timestamp() * 1000)
-		})
+	def post_blog(self, title: str, content: str, imageList: list = None, captionList: list = None, categoriesList: list = None, backgroundColor: str = None, fansOnly: bool = False, extensions: dict = None):
 		
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/member/invite", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-	def join_chat(self, chatId: str) -> int:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.profile.userId}", headers=self.get_headers(content_type="application/x-www-form-urlencoded"))
-		return response.status_code
-
-	def leave_chat(self, chatId: str) -> int:
-
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.profile.userId}", headers=self.get_headers())
-		return response.status_code
-
-		
-	def delete_chat(self, chatId: str) -> int:
-
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}", headers=self.get_headers())
-		return response.status_code
-
-	def get_chat_threads(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/chat/thread?type=joined-me&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_public_chat_threads(self, type: str = "recommended", start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/s/chat/thread?type=public-all&filterType={type}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_chat_thread(self, chatId: str) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_chat_messages(self, chatId: str, size: int = 25, pageToken: str = None) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/message?v=2&pagingType=t&size={size}"+ f"&pageToken={pageToken}" if pageToken else '', headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_message_info(self, chatId: str, messageId: str) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/message/{messageId}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def send_message(self, chatId: str, message: str = None, messageType: int = 0, file: BinaryIO = None, fileType: str = None, replyTo: str = None, mentionUserIds: list = None, stickerId: str = None, embedId: str = None, embedType: int = None, embedLink: str = None, embedTitle: str = None, embedContent: str = None, embedImage: BinaryIO = None) -> int:
-
-		if message is not None and file is None and mentionUserIds is not None:
-			message = message.replace("<@", "‎‏@").replace("@>", "‬‭")
-
-		mentions = []
-		if mentionUserIds:
-			for mention_uid in mentionUserIds:
-				mentions.append({"uid": mention_uid})
-
-		if embedImage:
-			embedImage = [[100, self.upload_media(embedImage, "image"), None]]
-
-		data = {
-			"type": messageType,
-			"content": message,
-			"clientRefId": int(timestamp() / 10 % 1000000000),
-			"attachedObject": {
-				"objectId": embedId,
-				"objectType": embedType,
-				"link": embedLink,
-				"title": embedTitle,
-				"content": embedContent,
-				"mediaList": embedImage
-			},
-			"extensions": {"mentionedArray": mentions},
-			"timestamp": int(timestamp() * 1000)
-		}
-
-		if replyTo: data["replyMessageId"] = replyTo
-
-		if stickerId:
-			data["content"] = None
-			data["stickerId"] = stickerId
-			data["type"] = 3
-
-		if file:
-			data["content"] = None
-			if fileType == "audio":
-				data["type"] = 2
-				data["mediaType"] = 110
-
-			elif fileType == "image":
-				data["mediaType"] = 100
-				data["mediaUploadValueContentType"] = "image/jpg"
-				data["mediaUhqEnabled"] = True
-
-			elif fileType == "gif":
-				data["mediaType"] = 100
-				data["mediaUploadValueContentType"] = "image/gif"
-				data["mediaUhqEnabled"] = True
-
-			else: raise exceptions.SpecifyType
-
-			data["mediaUploadValue"] = b64encode(file.read()).decode()
-
-		data = dumps(data)
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/message", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-
-	def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str = None) -> int:
-
-		data = {
-			"adminOpName": 102,
-			"timestamp": int(timestamp() * 1000)
-		}
-		if asStaff and reason:data["adminOpNote"] = {"content": reason}
-		data = dumps(data)
-
-		if not asStaff:response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/message/{messageId}", headers=self.get_headers())
-		else:response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/message/{messageId}/admin", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-
-	def send_embed(self, link: str, image: BinaryIO, message: str, chatId: str) -> int:
-		data = dumps({
-			"type": 0,
-			"content": message,
-			"extensions": {
-				"linkSnippetList": [{
-					"link": link,
-					"mediaType": 100,
-					"mediaUploadValue": b64encode(image.read()).decode(),
-					"mediaUploadValueContentType": "image/png"
-				}]
-			},
-				"clientRefId": int(timestamp() / 10 % 100000000),
-				"timestamp": int(timestamp() * 1000),
-				"attachedObject": None
-		})
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/message", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def mark_as_read(self, chatId: str, messageId: str) -> int:
-
-		data = dumps({
-			"messageId": messageId,
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/mark-as-read", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def transfer_host(self, chatId: str, userIds: list) -> int:
-		data = dumps({
-			"uidList": userIds,
-			"timestamp": int(timestamp() * 1000)
-		})
-
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/transfer-organizer", data=dumps({}), headers=self.get_headers(data=dumps({})))
-		return response.status_code
-
-
-	def accept_host(self, chatId: str, requestId: str) -> int:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept", data=dumps({}), headers=self.get_headers(data=dumps({})))
-		return response.status_code
-
-
-	def kick(self, userId: str, chatId: str, allowRejoin: bool = True) -> int:
-
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/member/{userId}?allowRejoin={1 if allowRejoin else 0}", headers=self.get_headers())
-		return response.status_code
-
-
-
-	def invite_to_vc(self, chatId: str, userId: str) -> int:
-
-		data = dumps({"uid": userId})
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/vvchat-presenter/invite/", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-	def change_vc_permission(self, chatId: str, permission: int) -> int:
-
-		data = dumps({
-			"vvChatJoinType": permission,
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/vvchat-permission", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def get_vc_reputation_info(self, chatId: str) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/avchat-reputation", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def claim_vc_reputation(self, chatId: str) -> ObjectCreator:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/{chatId}/avchat-reputation", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-
-	def apply_bubble(self, bubbleId: str, chatId: str, applyToAll: bool = False) -> int:
-		data = dumps({
-			"applyToAll": 1 if applyToAll is True else 0,
-			"bubbleId": bubbleId,
-			"threadId": chatId,
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/chat/thread/apply-bubble", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-
-
-#BLOGS AND ECT=============================
-
-
-	def post_blog(self, title: str, content: str, imageList: list = None, captionList: list = None, categoriesList: list = None, backgroundColor: str = None, fansOnly: bool = False, extensions: dict = None, crash: bool = False) -> ObjectCreator:
 		mediaList = []
 
-		if captionList is not None and imageList is not None:
+		if captionList is not None:
 			for image, caption in zip(imageList, captionList):
-				mediaList.append([100, self.upload_media(image, "image"), caption])
-
+				mediaList.append([100, self.req.upload_media(image), caption])
 		else:
 			if imageList is not None:
 				for image in imageList:
-					print(self.upload_media(image, "image"))
-					mediaList.append([100, self.upload_media(image, "image"), None])
-
+					mediaList.append([100, self.req.upload_media(image), None])
+		
 		data = {
 			"address": None,
 			"content": content,
@@ -798,44 +84,45 @@ class CommunityClient(Client):
 			"latitude": 0,
 			"longitude": 0,
 			"eventSource": "GlobalComposeMenu",
-			"timestamp": int(timestamp() * 1000)
 		}
-		if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
-		if backgroundColor: data["extensions"] = {"style": {"backgroundColor": backgroundColor}}
-		if categoriesList: data["taggedBlogCategoryIdList"] = categoriesList
-		data = dumps(data)
-		
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog", data=data, headers=self.get_headers(data=data))
-		return ObjectCreator(response.json())
 
-	def post_wiki(self, title: str, content: str, icon: str = None, imageList: list = None, keywords: str = None, backgroundColor: str = None, fansOnly: bool = False) -> ObjectCreator:
-		mediaList = []
+		if fansOnly:
+			data["extensions"] = {"fansOnly": fansOnly}
+		if backgroundColor:
+			data["extensions"] = {"style": {"backgroundColor": backgroundColor}}
+		if categoriesList:
+			data["taggedBlogCategoryIdList"] = categoriesList
+		return self.req.request("POST", f"/x{self.comId}/s/blog", data)
 
-		for image in imageList:
-			mediaList.append([100, self.upload_media(image, "image"), None])
+
+	def post_wiki(self, title: str, content: str, icon: str = None, imageList: list = None, keywords: str = None, backgroundColor: str = None, props: list = None, backgroundMediaList: list = None):
 
 		data = {
 			"label": title,
 			"content": content,
-			"mediaList": mediaList,
+			"mediaList": imageList if imageList else [],
 			"eventSource": "GlobalComposeMenu",
-			"timestamp": int(timestamp() * 1000)
+			"extensions": {},
 		}
-		if icon: data["icon"] = icon
-		if keywords: data["keywords"] = keywords
-		if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
-		if backgroundColor: data["extensions"] = {"style": {"backgroundColor": backgroundColor}}
-		data = dumps(data)
+		if icon:
+			data["icon"] = icon
+		if keywords:
+			data["keywords"] = keywords
+		if props:
+			data["extensions"].update({"props": props})
+		if backgroundMediaList:
+			data["extensions"].update({"style": {"backgroundMediaList": backgroundMediaList}})
+		if backgroundColor:
+			data["extensions"].update({"style": {"backgroundColor": backgroundColor}})
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/item", data=data, headers=self.get_headers(data=data))
-		return ObjectCreator(response.json())
+		return self.req.request("POST", f"/x{self.comId}/s/item", data)
 
 
-	def edit_blog(self, blogId: str, title: str = None, content: str = None, imageList: list = None, categoriesList: list = None, backgroundColor: str = None, fansOnly: bool = False) -> int:
+	def edit_blog(self, blogId: str, title: str = None, content: str = None, imageList: list = None, categoriesList: list = None, backgroundColor: str = None, fansOnly: bool = False):
 		mediaList = []
 
 		for image in imageList:
-			mediaList.append([100, self.upload_media(image, "image"), None])
+			mediaList.append([100, self.req.upload_media(image), None])
 
 		data = {
 			"address": None,
@@ -843,51 +130,307 @@ class CommunityClient(Client):
 			"latitude": 0,
 			"longitude": 0,
 			"eventSource": "PostDetailView",
-			"timestamp": int(timestamp() * 1000)
 		}
+
 		if title: data["title"] = title
 		if content: data["content"] = content
 		if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
 		if backgroundColor: data["extensions"] = {"style": {"backgroundColor": backgroundColor}}
 		if categoriesList: data["taggedBlogCategoryIdList"] = categoriesList
-		data = dumps(data)
+		return self.req.request("POST", f"/x{self.comId}/s/blog/{blogId}", data)
 
-		response = self.make_request(method="POST", endpoint=f"/s/blog/{blogId}", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+	def delete_blog(self, blogId: str):
+		return self.req.request("DELETE", f"/x{self.comId}/s/blog/{blogId}")
 
+	def delete_wiki(self, wikiId: str):
+		return self.req.request("DELETE", f"/x{self.comId}/s/item/{wikiId}") 
 
-	def delete_blog(self, blogId: str) -> int:
+	def repost_blog(self, content: str = None, blogId: str = None, wikiId: str = None):
+		if blogId is None and wikiId is None: raise SpecifyType
 
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/blog/{blogId}", headers=self.get_headers())
-		return response.status_code
-
-
-	def delete_wiki(self, wikiId: str) -> int:
-
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/item/{wikiId}", headers=self.get_headers())
-		return response.status_code
-
-	def repost_blog(self, content: str = None, blogId: str = None, wikiId: str = None) -> int:
-
-		if blogId is None and  wikiId is None: raise exceptions.SpecifyType()
-		data = dumps({
+		data = {
 			"content": content,
 			"refObjectId": blogId if blogId else wikiId,
 			"refObjectType": 1 if blogId else 2,
 			"type": 2,
-			"timestamp": int(timestamp() * 1000)
-		})
+		}
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+		return self.req.request("POST", f"/x{self.comId}/s/blog", data)
+
+	def repair_check_in(self, repair_method: str = RepairMethod.Coins):
+		if repair_method not in RepairMethod.all: raise WrongType
+		data = {
+			"repairMethod": repair_method
+		}
+
+		return self.req.request("POST", f"/x{self.comId}/s/check-in/repair", data)
 
 
-	def flag(self, reason: str, flagType: int, userId: str = None, blogId: str = None, wikiId: str = None, asGuest: bool = False) -> int:
+	def check_in(self, tz: int = None) -> dict:
+		return self.req.request("POST", f"/x{self.comId}/s/check-in", { "timezone": tz if tz else timezone()})
+
+
+	def lottery(self, tz: int = None):
+		return self.req.request("POST", f"/x{self.comId}/s/check-in/lottery", { "timezone": tz if tz else timezone()})["lotteryLog"]
+
+	def edit_profile(self, nickname: str = None, content: str = None, icon: BinaryIO = None, chatRequestPrivilege: str = None, imageList: list = None, captionList: list = None, backgroundImage: str = None, backgroundColor: str = None, titles: list = None, colors: list = None, defaultBubbleId: str = None):
+		mediaList = []
+		data = {}
+		if captionList is not None:
+			for image, caption in zip(imageList, captionList):
+				mediaList.append([100, self.req.upload_media(image), caption])
+		else:
+			if imageList is not None:
+				for image in imageList:
+					mediaList.append([100, self.req.upload_media(image), None])
+
+		if imageList is not None or captionList is not None:data["mediaList"] = mediaList
+		if nickname:data["nickname"] = nickname
+		if icon:data["icon"] = self.req.upload_media(icon)
+		if content:data["content"] = content
+		if chatRequestPrivilege:data["extensions"] = {"privilegeOfChatInviteRequest": chatRequestPrivilege}
+		if backgroundImage:
+			data["extensions"] = {"style": {
+				"backgroundMediaList": [[100, backgroundImage, None, None, None]]
+				}}
+		if backgroundColor:data["extensions"] = {"style": {"backgroundColor": backgroundColor}}
+		if defaultBubbleId:data["extensions"] = {"defaultBubbleId": defaultBubbleId}
+		if titles or colors:
+			tlt = []
+			for titles, colors in zip(titles, colors):
+				tlt.append({"title": titles, "color": colors})
+			data["extensions"] = {"customTitles": tlt}
+
+		return self.req.request("POST",  f"/x{self.comId}/s/user-profile/{self.userId}", data)
+
+	def vote_poll(self, blogId: str, optionId: str):
+		data = {
+			"value": 1,
+			"eventSource": "PostDetailView"
+		}
+		return self.req.request("POST",  f"x{self.comId}/s/blog/{blogId}/poll/option/{optionId}/vote", data)
+
+
+	def comment(self, message: str, userId: str = None, blogId: str = None, wikiId: str = None, replyTo: str = None, isGuest: bool = False):
+
+		data = {
+			"content": message,
+			"stickerId": None,
+			"type": 0
+		}
+		if replyTo: data["respondTo"] = replyTo
+		if isGuest: comType = "g-comment"
+		else: comType = "comment"
+
+		if userId:
+			data["eventSource"] = "UserProfileView"
+			url = f"/x{self.comId}/s/user-profile/{userId}/{comType}"
+		elif blogId:
+			data["eventSource"] = "PostDetailView"
+			url = f"/x{self.comId}/s/blog/{blogId}/{comType}"
+		elif wikiId:
+			data["eventSource"] = "PostDetailView"
+			url = f"/x{self.comId}/s/item/{wikiId}/{comType}"
+		else: raise SpecifyType
+
+		return self.req.request("POST",  url, data)
+						  
+	def delete_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None):
+
+		if userId:url = f"/x{self.comId}/s/user-profile/{userId}/comment/{commentId}"
+		elif blogId:url = f"/x{self.comId}/s/blog/{blogId}/comment/{commentId}"
+		elif wikiId:url = f"/x{self.comId}/s/item/{wikiId}/comment/{commentId}"
+		else:raise SpecifyType
+
+		return self.req.request("DELETE",  url)
+
+	def like_blog(self, blogId: Union[str, list] = None, wikiId: str = None):
+
+		data = {"value": 4}
+		if blogId:
+			if isinstance(blogId, str):
+				data["eventSource"] = "UserProfileView"
+				url = f"/x{self.comId}/s/blog/{blogId}/vote?cv=1.2"
+			elif isinstance(blogId, list):
+				data["targetIdList"] = blogId
+				url = f"/x{self.comId}/s/feed/vote"
+			else: raise WrongType(f"blogId: {type(blogId)}")
+
+		elif wikiId:
+			data["eventSource"] = "PostDetailView"
+			url = f"/x{self. comId}/s/item/{wikiId}/vote?cv=1.2"
+
+		else: raise SpecifyType
+
+		return self.req.request("POST",  url, data)
+
+	def unlike_blog(self, blogId: str = None, wikiId: str = None):
+		if blogId: url = f"/x{self.comId}/s/blog/{blogId}/vote?eventSource=UserProfileView"
+		elif wikiId: url = f"/x{self.comId}/s/item/{wikiId}/vote?eventSource=PostDetailView"
+		else: raise SpecifyType
+
+		return self.req.request("DELETE",  url)
+
+	def like_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None):
+		data = {"value": 1}
+
+		if userId:
+			data["eventSource"] = "UserProfileView"
+			url = f"/x{self.comId}/s/user-profile/{userId}/comment/{commentId}/vote?cv=1.2&value=1"
+		elif blogId:
+			data["eventSource"] = "PostDetailView"
+			url = f"/x{self.comId}/s/blog/{blogId}/comment/{commentId}/vote?cv=1.2&value=1"
+		elif wikiId:
+			data["eventSource"] = "PostDetailView"
+			url = f"/x{self.comId}/s/item/{wikiId}/comment/{commentId}/g-vote?cv=1.2&value=1"
+		else:raise SpecifyType
+
+		return self.req.request("POST",  url, data)
+
+	def unlike_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None):
+		if userId:url = f"/x{self.comId}/s/user-profile/{userId}/comment/{commentId}/g-vote?eventSource=UserProfileView"
+		elif blogId:url = f"/x{self.comId}/s/blog/{blogId}/comment/{commentId}/g-vote?eventSource=PostDetailView"
+		elif wikiId:url = f"/x{self.comId}/s/item/{wikiId}/comment/{commentId}/g-vote?eventSource=PostDetailView"
+		else:raise SpecifyType
+
+		return self.req.request("DELETE",  url)
+
+	def upvote_comment(self, blogId: str, commentId: str):
+		data = {
+			"value": 1,
+			"eventSource": "PostDetailView"
+		}
+
+		return self.req.request("POST",  f"/x{self.comId}/s/blog/{blogId}/comment/{commentId}/vote?cv=1.2&value=1", data)
+
+	def downvote_comment(self, blogId: str, commentId: str):
+		data = {
+			"value": -1,
+			"eventSource": "PostDetailView"
+		}
+
+		return self.req.request("POST",  f"/x{self.comId}/s/blog/{blogId}/comment/{commentId}/vote?cv=1.2&value=1", data)
+
+	def unvote_comment(self, blogId: str, commentId: str):
+		return self.req.request("DELETE",  f"/x{self.comId}/s/blog/{blogId}/comment/{commentId}/vote?eventSource=PostDetailView")
+
+	def reply_wall(self, userId: str, commentId: str, message: str):
+		data = {
+			"content": message,
+			"stackedId": None,
+			"respondTo": commentId,
+			"type": 0,
+			"eventSource": "UserProfileView"
+		}
+
+		return self.req.request("POST",  f"/x{self.comId}/s/user-profile/{userId}/comment", data)
+
+	def send_active_obj(self, startTime: int = None, endTime: int = None, tz: int = None, timers: list = None):
+		data = {
+			"userActiveTimeChunkList": [{
+				"start": startTime,
+				"end": endTime
+			}],
+			"optInAdsFlags": 2147483647,
+			"timezone": tz if tz else timezone()
+		}
+		if timers: data["userActiveTimeChunkList"] = timers
+
+		return self.req.request("POST",  f"/x{self.comId}/s/community/stats/user-active-time", data)
+
+	def activity_status(self, status: bool):
+		data = {
+			"onlineStatus": "on" if status is True else "off",
+			"duration": 86400
+		}
+
+		return self.req.request("POST",  f"/x{self.comId}/s/user-profile/{self.profile.userId}/online-status", data)
+
+	def check_notifications(self):
+		return self.req.request("POST",  f"/x{self.comId}/s/notification/checked")
+
+	def delete_notification(self, notificationId: str):
+		return self.req.request("DELETE",  f"/x{self.comId}/s/notification/{notificationId}")
+
+	def clear_notifications(self):
+		return self.req.request("DELETE",  f"/x{self.comId}/s/notification")
+	
+	def start_chat(self, userId: Union[str, list, tuple], message: str, title: str = None, content: str = None, isGlobal: bool = False, publishToGlobal: bool = False):
+		if isinstance(userId, str): userIds = [userId]
+		elif isinstance(userId, list): userIds = userId
+		elif isinstance(userId, tuple): userIds = userId
+		else: raise WrongType(f"userId: {type(userId)}")
+
+		data = {
+			"title": title,
+			"inviteeUids": userIds,
+			"initialMessageContent": message,
+			"content": content
+		}
+
+		if isGlobal is True:
+			data["type"] = 2
+			data["timestamp"] = "GlobalComposeMenu"
+		else:data["type"] = 0
+		if publishToGlobal is True:data["publishToGlobal"] = 1
+		else:data["publishToGlobal"] = 0
+
+		return self.req.request("POST",  f"/x{self.comId}/s/chat/thread", data)["thread"]
+
+	def invite_to_chat(self, userId: Union[str, list, tuple], chatId: str):
+		if isinstance(userId, str): userIds = [userId]
+		elif isinstance(userId, list): userIds = userId
+		elif isinstance(userId, tuple): userIds = userId
+		else: raise WrongType(f"userId: {type(userId)}")
+		data = { "uids": userIds }
+
+		return self.req.request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}/member/invite", data)
+
+	def add_to_favorites(self, userId: str):
+		return self.req.request("POST",  f"/x{self.comId}/s/user-group/quick-access/{userId}")
+	
+	def send_coins(self, coins: int, blogId: str = None, chatId: str = None, objectId: str = None, transactionId: str = None):
+		data = {
+			"coins": coins,
+			"tippingContext": {"transactionId": transactionId if transactionId else uuid4()}
+		}
+
+		if blogId is not None: url = f"/x{self.comId}/s/blog/{blogId}/tipping"
+		elif chatId is not None: url = f"/x{self.comId}/s/chat/thread/{chatId}/tipping"
+		elif objectId is not None:
+			data["objectId"] = objectId
+			data["objectType"] = 2
+			url = f"/x{self.comId}/s/tipping"
+		else: raise SpecifyType
+
+		return self.req.request("POST", url, data)
+
+	def thank_tip(self, chatId: str, userId: str):
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/tipping/tipped-users/{userId}/thank")
+
+	def follow(self, userId: Union[str, list]):
+		
+		if isinstance(userId, str):
+			return self.req.request("POST", f"/x{self.comId}/s/user-profile/{userId}/member")
+		elif isinstance(userId, list):
+			data = { "targetUidList": userId }
+			return self.req.request("POST", f"/x{self.comId}/s/user-profile/{self.userId}/joined", data)
+		else: raise WrongType(f"userId: {type(userId)}")
+
+	def unfollow(self, userId: str):
+		return self.req.request("DELETE", f"/x{self.comId}/s/user-profile/{self.userId}/joined/{userId}")
+
+	def block(self, userId: str):
+		return self.req.request("POST",  f"/x{self.comId}/s/block/{userId}")
+
+	def unblock(self, userId: str):
+		return self.req.request("DELETE",  f"/x{self.comId}/s/block/{userId}")
+
+	def flag(self, reason: str, flagType: int, userId: str = None, blogId: str = None, wikiId: str = None, asGuest: bool = False):
 
 		data = {
 			"flagType": flagType,
-			"message": reason,
-			"timestamp": int(timestamp() * 1000)
+			"message": reason
 		}
 		if userId:
 			data["objectId"] = userId
@@ -898,549 +441,706 @@ class CommunityClient(Client):
 		elif wikiId:
 			data["objectId"] = wikiId
 			data["objectType"] = 2
-		else: raise exceptions.SpecifyType
+		else: raise SpecifyType
 
-		data = dumps(data)
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/{'g-flag' if asGuest else 'flag'}", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+		return self.req.request("POST",  f"/x{self.comId}/s/{'g-flag' if asGuest else 'flag'}", data)
 
-
-	def get_blog_info(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None) -> ObjectCreator:
-
-
-		if fileId:part=f"shared-folder/files/{fileId}"
-		elif blogId or quizId:part=f"blog/{blogId or quizId}"
-		elif wikiId:part=f"item/{wikiId}"
-		else: raise exceptions.SpecifyType
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/{part}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_comments(self, userId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, sorting: str = "newest", start: int = 0, size: int = 25) -> ObjectCreator:
-
-		if sorting.lower() not in ("newest", "oldest", "vote"): raise exceptions.WrongType(sorting)
-		if fileId:part=f"shared-folder/files/{fileId}"
-		elif blogId or quizId:part=f"blog/{blogId}"
-		elif wikiId:part=f"item/{wikiId}"
-		elif userId:part=f"user-profile/{userId}"
-		else: raise exceptions.SpecifyType
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/{part}/comment?sort={sorting}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_saved_blogs(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/bookmark?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-
-	def get_recent_blogs(self, pageToken: str = None, start: int = 0, size: int = 25) -> ObjectCreator:
-	
-		response = self.make_request(method="GET", endpoint=f"x{self.comId}/s/feed/blog-all?pagingType=t&{ f'pageToken={pageToken}' if pageToken else f'start={start}'}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_blog_categories(self, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog-category?size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_blogs_by_category(self, categoryId: str,start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog-category/{categoryId}/blog-list?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_recent_wiki_items(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/item?type=catalog-all&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_wiki_categories(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/item-category?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_wiki_category(self, categoryId: str, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/item-category/{categoryId}?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_shared_folder_info(self) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/shared-folder/stats", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_shared_folder_files(self, type: str = "latest", start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/shared-folder/files?type={type}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def comment(self, message: str = None, stickerId: str = None, userId: str = None, blogId: str = None, wikiId: str = None, replyTo: str = None, isGuest: bool = False) -> int:
-
+	def send_message(self, chatId: str, message: str = None, messageType: int = 0, file: BinaryIO = None, fileType: str = None, replyTo: str = None, mentionUserIds: list = None, stickerId: str = None, embedId: str = None, embedType: int = None, embedLink: str = None, embedTitle: str = None, embedContent: str = None, embedImage: BinaryIO = None):
 		data = {
-			"content": message,
-			"stickerId": stickerId,
+			"type": messageType,
+			"content": message
+		}
+		if	any(obj is None for obj in [embedId, embedType, embedLink, embedTitle, embedContent, embedImage]):
+			attachedObject = {}
+			if embedId:attachedObject["objectId"] = embedId
+			if embedType:attachedObject["objectType"] = embedType
+			if embedLink:attachedObject["link"] = embedLink
+			if embedTitle:attachedObject["title"] = embedTitle
+			if embedContent:attachedObject["content"] = embedContent
+			if embedImage:attachedObject["mediaList"] = [[100, self.req.upload_media(embedImage), None]]
+			data["attachedObject"] = attachedObject
+		if mentionUserIds:
+			mentions = [{"uid": mention_uid} for mention_uid in mentionUserIds]
+			data["extensions"] = {"mentionedArray": mentions}
+		if replyTo: data["replyMessageId"] = replyTo
+		if stickerId:
+			data["content"] = None
+			data["stickerId"] = stickerId
+			data["type"] = 3
+		if file:
+			data["content"] = None
+
+			if fileType == "audio":
+				data["type"] = 2
+				data["mediaType"] = 110
+				data["mediaUploadValue"] = b64encode(file.read()).decode()
+			else:
+				url = self.req.upload_media(file)
+				data["mediaValue"] = url
+		return self.req.request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}/message", data)
+
+	def send_full_embed(self, link: str, image: BinaryIO, message: str, chatId: str):
+		url = self.req.upload_media(image)
+		data = {
 			"type": 0,
-			"timestamp": int(timestamp() * 1000)
+			"content": message,
+			"extensions": {
+				"linkSnippetList": [{
+					"link": link,
+					"mediaValue": url
+				}]
+			},
+			"attachedObject": None
 		}
-		if replyTo: data["respondTo"] = replyTo
-		if userId:
-			data["eventSource"] = "UserProfileView"
-			part=f"user-profile/{userId}"
-		elif blogId:
-			data["eventSource"] = "PostDetailView"
-			part=f"blog/{blogId}"
-		elif wikiId:
-			data["eventSource"] = "PostDetailView"
-			part=f"item/{wikiId}"
-		else: raise exceptions.SpecifyType
 
-		data = dumps(data)
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/{part}/{'g-comment' if isGuest else 'comment'}", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+		return self.req.request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}/message", data)
 
-	def delete_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None) -> int:
+	def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str = None):
 
-		if userId:part=f"user-profile/{userId}"
-		elif blogId:part=f"blog/{blogId}"
-		elif wikiId:part=f"item/{wikiId}"
-		else: raise exceptions.SpecifyType
+		if asStaff:
+			data = {
+				"adminOpName": 102,
+			}
+			if reason:data["adminOpNote"] = {"content": reason}
+			return self.req.request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}/message/{messageId}/admin", data)
+		return self.req.request("DELETE",  f"/x{self.comId}/s/chat/thread/{chatId}/message/{messageId}")
 
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/{part}/g-comment/{commentId}", headers=self.get_headers())
-		return response.status_code
+	def mark_as_read(self, chatId: str, messageId: str):
+		data = {"messageId": messageId}
+		return self.req.request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}/mark-as-read", data)
 
-
-	def vote_poll(self, blogId: str, optionId: str) -> int:
-		data = dumps({
-			"value": 1,
-			"eventSource": "PostDetailView",
-			"timestamp": int(timestamp() * 1000)
-		})
+	def edit_chat(self, chatId: str, title: str = None, icon: str = None, content: str = None, announcement: str = None, keywords: list = None, pinAnnouncement: bool = None, publishToGlobal: bool = None, fansOnly: bool = None):
+		data = {}
 		
+		if title: data["title"] = title
+		if content: data["content"] = content
+		if icon: data["icon"] = icon
+		if keywords: data["keywords"] = keywords
+		if announcement: data["extensions"] = {"announcement": announcement}
+		if pinAnnouncement: data["extensions"] = {"pinAnnouncement": pinAnnouncement}
+		if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
+		if publishToGlobal is not None: data["publishToGlobal"] = 0 if publishToGlobal else 1
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog/{blogId}/poll/option/{optionId}/vote", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+		return self.req.request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}", data)
 
-
-	def like_blog(self, blogId: Union[str, list] = None, wikiId: str = None) -> int:
-
+	def do_not_disturb(self, chatId: str, doNotDisturb: bool = True) -> dict:
 		data = {
-			"value": 4,
-			"timestamp": int(timestamp() * 1000)
+			"alertOption": 2 if doNotDisturb else 1,
 		}
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.userId}/alert", data)
 
-		if blogId:
-			if isinstance(blogId, str):
-				data["eventSource"] = "UserProfileView"
-				data = dumps(data)
-				response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog/{blogId}/g-vote?cv=1.2", data=data, headers=self.get_headers(data=data))
-			elif isinstance(blogId, list):
-				data["targetIdList"] = blogId
-				data = dumps(data)
-				response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/feed/g-vote", data=data, headers=self.get_headers(data=data))
-			else: raise exceptions.WrongType(type(blogId))
-
-		elif wikiId:
-			data["eventSource"] = "PostDetailView"
-			data = dumps(data)
-			response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/item/{wikiId}/g-vote?cv=1.2", data=data, headers=self.get_headers(data=data))
-		else: raise exceptions.SpecifyType()
-		return response.status_code
+	def pin_chat(self, chatId: str, pin: bool = True) -> dict:
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}{'pin' if pin else 'unpin'}", {})
 
 
-	def unlike_blog(self, blogId: str = None, wikiId: str = None) -> int:
-
-		if blogId: url=f"/x{self.comId}s/blog/{blogId}/g-vote?eventSource=UserProfileView"
-		elif wikiId: url=f"/x{self.comId}/s/item/{wikiId}/g-vote?eventSource=PostDetailView"
-		else: raise exceptions.SpecifyType
-
-		response = self.make_request(method="POST", endpoint=url, headers=self.get_headers())
-		response.status_code
-
-	def like_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None) -> int:
-
+	def set_chat_background(self, chatId: str, backgroundImage: BinaryIO) -> dict:
 		data = {
-			"value": 1,
-			"timestamp": int(timestamp() * 1000)
+			"media": [100, self.req.upload_media(backgroundImage).mediaValue, None]
 		}
-		if userId:
-			data["eventSource"] = "UserProfileView"
-			part=f"user-profile/{userId}"
-		elif blogId:
-			data["eventSource"] = "PostDetailView"
-			part=f"blog/{blogId}"
-		elif wikiId:
-			data["eventSource"] = "PostDetailView"
-			part=f"item/{wikiId}"
-		else: raise exceptions.SpecifyType
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.userId}/background", data)
+	
+	def add_co_hosts(self, chatId: str, coHosts: list) -> dict:
+		data = {
+			"uidList": coHosts
+		}
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/co-host", data)
 
-		data = dumps(data)
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/{part}/comment/{commentId}/g-vote?cv=1.2&value=1", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+	def chat_view_only(self, chatId: str, viewOnly: bool = False) -> dict:
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}")
+	
+	def member_can_invite_to_chat(self, chatId: str, canInvite: bool = True) -> dict:
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}")
 
+	def member_can_chat_tip(self, chatId: str, canTip: bool = True) -> dict:
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}")
 
-	def unlike_comment(self, commentId: str, userId: str = None, blogId: str = None, wikiId: str = None) -> int:
+	def transfer_host(self, chatId: str, userIds: list):
+		data = { "uidList": userIds }
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/transfer-organizer", data)
 
-		if userId:part=f"user-profile/{userId}"
-		elif blogId:part=f"blog/{blogId}"
-		elif wikiId:part=f"item/{wikiId}"
-		else: raise exceptions.SpecifyType
+	def accept_host(self, chatId: str, requestId: str):
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept")
 
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/{part}/comment/{commentId}/g-vote?eventSource={'UserProfileView' if userId else 'PostDetailView'}", headers=self.get_headers())
-		return response.status_code
+	def kick(self, userId: str, chatId: str, allowRejoin: bool = True):
+		return self.req.request("DELETE", f"/x{self.comId}/s/chat/thread/{chatId}/member/{userId}?allowRejoin={int(allowRejoin)}")
 
-	def upvote_comment(self, blogId: str, commentId: str) -> int:
-		data = dumps({
-			"value": 1,
-			"eventSource": "PostDetailView",
-			"timestamp": int(timestamp() * 1000)
-		})
+	def join_chat(self, chatId: str):
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.userId}")
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog/{blogId}/comment/{commentId}/vote?cv=1.2&value=1", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+	def leave_chat(self, chatId: str):
+		return self.req.request("DELETE", f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.userId}")
 
+	def delete_chat(self, chatId: str):
+		return self.req.request("DELETE", f"/x{self.comId}/s/chat/thread/{chatId}")
 
-	def downvote_comment(self, blogId: str, commentId: str) -> int:
-		data = dumps({
-			"value": -1,
-			"eventSource": "PostDetailView",
-			"timestamp": int(timestamp() * 1000)
-		})
+	def subscribe_influencer(self, userId: str, autoRenew: str = False, transactionId: str = None):
+		data = {
+			"paymentContext": {
+				"transactionId": transactionId if transactionId else str(uuid4()),
+				"isAutoRenew": autoRenew
+			}
+		}
+		return self.req.request("POST", f"/x{self.comId}/s/influencer/{userId}/subscribe", data)
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog/{blogId}/comment/{commentId}/vote?cv=1.2&value=1", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+	def promotion(self, noticeId: str, type: str = "accept"):
+		return self.req.request("POST", f"/x{self.comId}/s/notice/{noticeId}/{type}")
 
-
-	def unvote_comment(self, blogId: str, commentId: str) -> int:
-
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/blog/{blogId}/comment/{commentId}/vote?eventSource=PostDetailView", headers=self.get_headers())
-		return response.status_code
-
-
-	def play_quiz_raw(self, quizId: str, quizAnswerList: list, quizMode: int = 0) -> ObjectCreator:
-		data = dumps({
+	def play_quiz_raw(self, quizId: str, quizAnswerList: list, quizMode: int = 0):
+		data = {
 			"mode": quizMode,
-			"quizAnswerList": quizAnswerList,
-			"timestamp": int(timestamp() * 1000)
-		})
-		
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog/{quizId}/quiz/result", data=data, headers=self.get_headers(data=data))
-		return ObjectCreator(response.json())
+			"quizAnswerList": quizAnswerList
+		}
 
+		return self.req.request("POST", f"/x{self.comId}/s/blog/{quizId}/quiz/result", data)
 
-	def play_quiz(self, quizId: str, questionIdsList: list, answerIdsList: list, quizMode: int = 0) -> ObjectCreator:
-		
-		quizAnswerList = []
+	def play_quiz(self, quizId: str, questionIdsList: list, answerIdsList: list, quizMode: int = 0):
+		data = {
+			"mode": quizMode,
+			"quizAnswerList": list()
+		}
 		for question, answer in zip(questionIdsList, answerIdsList):
-			part = dumps({
+			data["quizAnswerList"].append({
 				"optIdList": [answer],
 				"quizQuestionId": question,
 				"timeSpent": 0.0
 			})
-			quizAnswerList.append(loads(part))
-		return self.play_quiz_raw(quizId=quizId, quizAnswerList=quizAnswerList, quizMode=quizMode)
+		
+		return self.req.request("POST", f"/x{self.comId}/s/blog/{quizId}/quiz/result", data)
 
-	def get_quiz_rankings(self, quizId: str, start: int = 0, size: int = 25) -> ObjectCreator:
+	def vc_permission(self, chatId: str, permission: int = VoiceChatJoinPermissions.Open):
+		data = { "vvChatJoinType": permission }
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/vvchat-permission", data)
 
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog/{quizId}/quiz/result?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
+	def get_vc_reputation_info(self, chatId: str):
+		return self.req.request("GET", f"/x{self.comId}/s/chat/thread/{chatId}/avchat-reputation")
+
+	def claim_vc_reputation(self, chatId: str):
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/avchat-reputation")
+
+	def get_all_users(self, type: str = UsersTypes.Recent, start: int = 0, size: int = 25):
+		if type not in UsersTypes.all:raise WrongType(f"type: {type} not in {UsersTypes.all}")
+		return self.req.request("GET", f"/x{self.comId}/s/user-profile?type={type}&start={start}&size={size}")
+
+	def get_online_users(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/live-layer?topic=ndtopic:x{self.comId}:online-members&start={start}&size={size}")
+
+	def get_online_favorite_users(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/user-group/quick-access?type=online&start={start}&size={size}")
+
+	def get_user_info(self, userId: str):
+		return self.req.request("GET", f"/x{self.comId}/s/user-profile/{userId}")["userProfile"]
+
+	def get_user_following(self, userId: str, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/user-profile/{userId}/joined?start={start}&size={size}")["userProfileList"]
+
+	def get_user_followers(self, userId: str, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/user-profile/{userId}/member?start={start}&size={size}")["userProfileList"]
+
+	def get_user_checkins(self, userId: str):
+		return self.req.request("GET", f"/x{self.comId}/s/check-in/stats/{userId}?timezone={timezone()}")
+
+	def get_user_blogs(self, userId: str, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/blog?type=user&q={userId}&start={start}&size={size}")["blogList"]
+
+	def get_user_wikis(self, userId: str, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/item?type=user-all&start={start}&size={size}&cv=1.2&uid={userId}")["itemList"]
+
+	def get_user_achievements(self, userId: str):
+		return self.req.request("GET", f"/x{self.comId}/s/user-profile/{userId}/achievements")["achievements"]
+
+	def get_influencer_fans(self, userId: str, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/influencer/{userId}/fans?start={start}&size={size}")
+
+	def get_blocked_users(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/block?start={start}&size={size}")["userProfileList"]
+
+	def get_blocker_users(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/block?start={start}&size={size}")["blockerUidList"]
+
+	def search_users(self, nickname: str, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/user-profile?type=name&q={nickname}&start={start}&size={size}")["userProfileList"]
+
+	def get_saved_blogs(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/bookmark?start={start}&size={size}")["bookmarkList"]
+
+	def get_leaderboard_info(self, type: str = LeaderboardTypes.Day, start: int = 0, size: int = 25):
+		if type not in LeaderboardTypes.all:raise WrongType(f"LeaderboardTypes.all: {type} not in {LeaderboardTypes.all}")
+		url = f"/g/s-x{self.comId}/community/leaderboard?rankingType={type}&start={start}"
+		if type != 4:url += f"&size={size}"
+
+		return self.req.request("GET", url)["userProfileList"]
 
 
-#STAFF=============================
+	def get_wiki_info(self, wikiId: str):
+		return self.req.request("GET", f"/x{self.comId}/s/item/{wikiId}")
 
-	def edit_community(self, name: str = None, description: str = None, aminoId: str = None, primaryLanguage: str = None, themePackUrl: str = None) -> int:
-		data = {"timestamp": int(timestamp() * 1000)}
+	def get_recent_wiki_items(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/item?type=catalog-all&start={start}&size={size}")["itemList"]
 
-		if name is not None: data["name"] = name
-		if description is not None: data["content"] = description
-		if aminoId is not None: data["endpoint"] = aminoId
-		if primaryLanguage is not None: data["primaryLanguage"] = primaryLanguage
-		if themePackUrl is not None: data["themePackUrl"] = themePackUrl
-		data = dumps(data)
+	def get_wiki_categories(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/item-category?start={start}&size={size}")["itemCategoryList"]
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/settings", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+	def get_wiki_category(self, categoryId: str, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/item-category/{categoryId}?pagingType=t&start={start}&size={size}")
+
+	def get_tipped_users(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, chatId: str = None, start: int = 0, size: int = 25):
+		object_types = {
+			'blogId': {'id': blogId or quizId, 'url': f"/x{self.comId}/s/blog/{blogId or quizId}/tipping/tipped-users-summary"},
+			'wikiId': {'id': wikiId, 'url': f"/x{self.comId}/s/item/{wikiId}/tipping/tipped-users-summary"},
+			'chatId': {'id': chatId, 'url': f"/x{self.comId}/s/chat/thread/{chatId}/tipping/tipped-users-summary"},
+			'fileId': {'id': fileId, 'url': f"/x{self.comId}/s/shared-folder/files/{fileId}/tipping/tipped-users-summary"}
+		}
+		for key, value in object_types.items():
+			if value['id']:return self.req.request("GET", f"{value['url']}?start={start}&size={size}")
+		else:raise SpecifyType
+
+
+	def get_chat_threads(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/chat/thread?type=joined-me&start={start}&size={size}")["threadList"]
+
+	def get_public_chat_threads(self, type: str = "recommended", start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/chat/thread?type=public-all&filterType={type}&start={start}&size={size}")["threadList"]
+
+	def get_chat_thread(self, chatId: str):
+		return self.req.request("GET", f"/x{self.comId}/s/chat/thread/{chatId}")["thread"]
+
+	def get_chat_messages(self, chatId: str, size: int = 25, pageToken: str = None):
+		return self.req.request("GET", f"/x{self.comId}/s/chat/thread/{chatId}/message?v=2&pagingType=t&size={size}{f'&pageToken={pageToken}' if pageToken else  ''}")
+
+	def get_message_info(self, chatId: str, messageId: str):
+		return self.req.request("GET", f"/x{self.comId}/s/chat/thread/{chatId}/message/{messageId}")["message"]
+
+	def get_blog_info(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None):
+		if blogId or quizId:
+			return self.req.request("GET", f"/x{self.comId}/s/blog/{blogId or quizId}")
+		elif wikiId:
+			return self.req.request("GET", f"/x{self.comId}/s/item/{wikiId}")
+		elif fileId:
+			return self.req.request("GET", f"/x{self.comId}/s/shared-folder/files/{fileId}")["file"]
+		raise SpecifyType
+
+	def get_blog_comments(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, sorting: str = Sorting.Newest, start: int = 0, size: int = 25):
+		if sorting not in Sorting.all:raise ValueError(f"Sorting.all: {sorting} not in {Sorting.all}")
+		object_types = {
+			'blogId': {'id': blogId or quizId, 'url': f"/x{self.comId}/s/blog/{blogId or quizId}/comment"},
+			'wikiId': {'id': wikiId, 'url': f"/x{self.comId}/s/item/{wikiId}/comment"},
+			'fileId': {'id': fileId, 'url': f"/x{self.comId}/s/shared-folder/files/{fileId}/comment"}
+		}
+
+		for key, value in object_types.items():
+			if value['id']:
+				return self.req.request("GET", f"{value['url']}?sort={sorting}&start={start}&size={size}")["commentList"]
+		else:
+			raise SpecifyType
+
+
+	def get_blog_categories(self, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/blog-category?size={size}")["blogCategoryList"]
+
+	def get_blogs_by_category(self, categoryId: str,start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/blog-category/{categoryId}/blog-list?start={start}&size={size}")["blogList"]
+
+	def get_quiz_rankings(self, quizId: str, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/blog/{quizId}/quiz/result?start={start}&size={size}")
+
+	def get_wall_comments(self, userId: str, sorting: str = Sorting.Newest, start: int = 0, size: int = 25):
+		if sorting not in Sorting.all:raise ValueError(f"Sorting.all: {sorting} not in {Sorting.all}")
+		return self.req.request("GET", f"/x{self.comId}/s/user-profile/{userId}/comment?sort={sorting}&start={start}&size={size}")["commentList"]
+
+	def get_recent_blogs(self, pageToken: str = None, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/feed/blog-all?pagingType=t&start={start}&size={size}{f'&pageToken={pageToken}' if pageToken else  ''}")
+
+	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/chat/thread/{chatId}/member?type=default&cv=1.2&start={start}&size={size}")["memberList"]
+
+	def get_notifications(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/notification?pagingType=t&start={start}&size={size}")["notificationList"]
+
+	def get_notices(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/notice?type=usersV2&status=1&start={start}&size={size}")["noticeList"]
+
+	def get_sticker_pack_info(self, sticker_pack_id: str):
+		return self.req.request("GET", f"/x{self.comId}/s/sticker-collection/{sticker_pack_id}?includeStickers=true")["stickerCollection"]
+
+	def get_my_sticker_packs(self):
+		return self.req.request("GET", f"/x{self.comId}/s/sticker-collection?includeStickers=false&type=my-active-collection")["stickerCollection"]
+
+	def get_store_chat_bubbles(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/store/items?sectionGroupId=chat-bubble&start={start}&size={size}")
 	
+	def get_store_stickers(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/store/items?sectionGroupId=sticker&start={start}&size={size}")
 
+	def get_community_stickers(self):
+		return self.req.request("GET", f"/x{self.comId}/s/sticker-collection?type=community-shared")
 
-	def set_community_topics(self, topicId: int) -> int:
+	def get_sticker_collection(self, collectionId: str):
+		return self.req.request("GET", f"/x{self.comId}/s/sticker-collection/{collectionId}?includeStickers=true")["stickerCollection"]
 
-		data = dumps({
-			"mainTopics": [topicId],
-			"timestamp": int(timestamp() * 1000)
-		})
+	def get_shared_folder_info(self):
+		return self.req.request("GET", f"/x{self.comId}/s/shared-folder/stats")["stats"]
 
+	def get_shared_folder_files(self, type: str = "latest", start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/shared-folder/files?type={type}&start={start}&size={size}")["fileList"]
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/main-topics", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+	#
+	# MODERATION MENU
+	#
 
-	def get_topics_list(self) -> ObjectCreator:
+	def moderation_history(self, userId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, size: int = 25):
+		object_types = {
+			'userId': {'id': userId, 'type': 0},
+			'blogId': {'id': blogId, 'type': 1},
+			'wikiId': {'id': wikiId, 'type': 2},
+			'quizId': {'id': quizId, 'type': 1},
+			'fileId': {'id': fileId, 'type': 109}
+		}
 
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/community/main-topics", headers=self.get_headers())
-		return ObjectCreator(response.json())
+		for key, value in object_types.items():
+			if value['id']:
+				url = f"/x{self.comId}/s/admin/operation?objectId={value['id']}&objectType={value['type']}&pagingType=t&size={size}"
+				break
+		else:
+			url = f"/x{self.comId}/s/admin/operation?pagingType=t&size={size}"
+		return self.req.request("GET", url)["adminLogList"]
 
-	def create_mailing(self, message: str, url: str, scheduled_time: int = 0) -> ObjectCreator:
-		data = dumps({
-			"payload": {
-				"aps": {
-					"alert": message
-				},
-				"u": url
-			},
-			"timestamp": int(timestamp() * 1000),
-			"scheduledTime": scheduled_time
-		})
+	def feature(self, time: int, userId: str = None, chatId: str = None, blogId: str = None, wikiId: str = None):
+		if chatId:
+			if time == 1: time = 3600
+			if time == 1: time = 7200
+			if time == 1: time = 10800
 
+		else:
+			if time == 1: time = 86400
+			elif time == 2: time = 172800
+			elif time == 3: time = 259200
+			else: raise WrongType(time)
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/push", data=data, headers=self.get_headers(data=data))
-		return ObjectCreator(response.json())
+		data = {
+			"adminOpName": 114,
+			"adminOpValue": {
+				"featuredDuration": time
+			}
+		}
 
+		if userId:
+			data["adminOpValue"] = {"featuredType": 4}
+			url = f"/x{self.comId}/s/user-profile/{userId}/admin"
+		elif blogId:
+			data["adminOpValue"] = {"featuredType": 1}
+			url = f"/x{self.comId}/s/blog/{blogId}/admin"
+		elif wikiId:
+			data["adminOpValue"] = {"featuredType": 1}
+			url = f"/x{self.comId}/s/item/{wikiId}/admin"
+		elif chatId:
+			data["adminOpValue"] = {"featuredType": 5}
+			url = f"/x{self.comId}/s/chat/thread/{chatId}/admin"
+		else: raise SpecifyType
 
-	def get_recent_mailings(self, scheduling: bool = False) -> ObjectCreator:
+		return self.req.request("POST", url, data)
 
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/push?status={'1%2C4%2C2' if scheduling is True else '3%2C5%2C5%2C8%2C9'}", headers=self.get_headers())
-		return ObjectCreator(response.json())
+	def unfeature(self, userId: str = None, chatId: str = None, blogId: str = None, wikiId: str = None):
+		data = {
+			"adminOpName": 114,
+			"adminOpValue": {"featuredType": 0}
+		}
 
-	def delete_mailing(self, pushTaskId: str) -> int:
-		data = dumps({
-			"status": 5,
-			"timestamp": int(timestamp() * 1000)
-		})
+		if userId:
+			url = f"/x{self.comId}/s/user-profile/{userId}/admin"
+		elif blogId:
+			url = f"/x{self.comId}/s/blog/{blogId}/admin"
+		elif wikiId:
+			url = f"/x{self.comId}/s/item/{wikiId}/admin"
+		elif chatId:
+			url = f"/x{self.comId}/s/chat/thread/{chatId}/admin"
+		else: raise SpecifyType
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/push/{pushTaskId}/status", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+		return self.req.request("POST", url, data)
 
+	def hide(self, userId: str = None, chatId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, reason: str = None):
+		data = {
+			"adminOpNote": {
+				"content": reason
+			}
+		}
 
+		if userId:
+			data["adminOpName"] = 18
+			url = f"/x{self.comId}/s/user-profile/{userId}/admin"
+		elif blogId:
+			data["adminOpName"] = 110
+			data["adminOpValue"] = 9
+			url = f"/x{self.comId}/s/blog/{blogId}/admin"
+		elif quizId:
+			data["adminOpName"] = 110
+			data["adminOpValue"] = 9
+			url = f"/x{self.comId}/s/blog/{quizId}/admin"
+		elif wikiId:
+			data["adminOpName"] = 110
+			data["adminOpValue"] = 9
+			url = f"/x{self.comId}/s/item/{wikiId}/admin"
+		elif chatId:
+			data["adminOpName"] = 110
+			data["adminOpValue"] = 9
+			url = f"/x{self.comId}/s/chat/thread/{chatId}/admin"
+		elif fileId:
+			data["adminOpName"] = 110
+			data["adminOpValue"] = 9
+			url = f"/x{self.comId}/s/shared-folder/files/{fileId}/admin"
+		else: raise SpecifyType
 
+		return self.req.request("POST", url, data)
 
-	def community_review_request(self) -> ObjectCreator:
+	def unhide(self, userId: str = None, chatId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, reason: str = None):
+		data = {
+			"adminOpNote": {
+				"content": reason
+			}
+		}
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/review-request", headers=self.get_headers())
-		return ObjectCreator(response.json())
+		if userId:
+			data["adminOpName"] = 19
+			url = f"/x{self.comId}/s/user-profile/{userId}/admin"
+		elif blogId:
+			data["adminOpName"] = 110
+			data["adminOpValue"] = 0
+			url = f"/x{self.comId}/s/blog/{blogId}/admin"
+		elif quizId:
+			data["adminOpName"] = 110
+			data["adminOpValue"] = 0
+			url = f"/x{self.comId}/s/blog/{quizId}/admin"
+		elif wikiId:
+			data["adminOpName"] = 110
+			data["adminOpValue"] = 0
+			url = f"/x{self.comId}/s/item/{wikiId}/admin"
+		elif chatId:
+			data["adminOpName"] = 110
+			data["adminOpValue"] = 0
+			url = f"/x{self.comId}/s/chat/thread/{chatId}/admin"
+		elif fileId:
+			data["adminOpName"] = 110
+			data["adminOpValue"] = 0
+			url = f"/x{self.comId}/s/shared-folder/files/{fileId}/admin"
+		else: raise SpecifyType
 
+		return self.req.request("POST", url, data)
 
-	def change_community_join_permission(self, permission: str) -> int:
-		"""
-		0 - open
-		1 - need a solution 
-		2 - close
-		"""
-		if permission not in (0, 1, 2): raise exceptions.SpecifyType(permission)
-		data = dumps({
-			"joinType": permission,
-			"timestamp": int(timestamp() * 1000)
-		})
+	def edit_titles(self, userId: str, titles: list):
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/settings", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-	def change_community_searchable(self, searchable: bool = True) -> int:
-		data = dumps({
-			"searchable": searchable,
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/settings", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-	def change_community_invite_permission(self, onlyAdmins: bool = True) -> int:
-		data = dumps({
-			"path": "general.invitePermission",
-			"value": 2 if onlyAdmins is True else 1,
-			"timestamp": int(timestamp() * 1000),
-			"action": "set"
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/configuration", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-
-
-	def upload_themepack(self, file: BinaryIO) -> ObjectCreator:
-
-		response = self.make_request(method="POST", endpoint=f"/s/media/upload/target/community-theme-pack", data=file.read(), headers=self.get_headers(data=file.read()))
-		return ObjectCreator(response.json())
-
-
-	def get_moderation_history(self, userId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, size: int = 25) -> ObjectCreator:
-
-
-		if userId: part=f"?objectId={userId}&objectType=0&"
-		elif blogId: part=f"?objectId={blogId}&objectType=1&"
-		elif quizId: part=f"?objectId={quizId}&objectType=1&"
-		elif wikiId: part=f"?objectId={wikiId}&objectType=2&"
-		elif fileId: part=f"?objectId={fileId}&objectType=109&"
-		else: part=f"?"
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/admin/operation{part}pagingType=t&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-
-	def get_invite_codes(self, status: str = "normal", start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/g/s-x{self.comId}/community/invitation?status={status}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def generate_invite_code(self, duration: int = 0, force: bool = True) -> ObjectCreator:
-		data = dumps({
-			"duration": duration,
-			"force": force,
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/g/s-x{self.comId}/community/invitation", data=data, headers=self.get_headers(data=data))
-		return ObjectCreator(response.json())
-
-
-	def delete_invite_code(self, inviteId: str) -> int:
-
-		response = self.make_request(method="DELETE", endpoint=f"/g/s-x{self.comId}/community/invitation/{inviteId}", headers=self.get_headers())
-		return response.status_code
-
-
-	def get_join_requests(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/community/membership-request?status=pending&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def accept_join_request(self, userId: str) -> int:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/membership-request/{userId}/accept", data=dumps({}), headers=self.get_headers(data=dumps({})))
-		return response.status_code
-
-	def reject_join_request(self, userId: str) -> int:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/membership-request/{userId}/reject", data=dumps({}), headers=self.get_headers(data=dumps({})))
-		return response.status_code
-
-
-	def edit_titles(self, userId: str, titles: list) -> int:
-
-		_titles = list()
-		for titles, colors in titles:
-			_titles.append({"title": titles, "color": colors})
-
-		data = dumps({
+		data = {
 			"adminOpName": 207,
 			"adminOpValue": {
-				"titles": _titles
+				"titles": titles
+			}
+		}
+
+		return self.req.request("POST", f"/x{self.comId}/s/user-profile/{userId}/admin", data)
+
+	
+	def warn(self, userId: str, reason: str = None):
+		data = {
+			"uid": userId,
+			"title": "Custom",
+			"content": reason,
+			"attachedObject": {
+				"objectId": userId,
+				"objectType": 0
 			},
-			"timestamp": int(timestamp() * 1000)
-		})
+			"penaltyType": 0,
+			"adminOpNote": {},
+			"noticeType": 7
+		}
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/user-profile/{userId}/admin", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+		return self.req.request("POST", f"/x{self.comId}/s/notice", data)
 
+	
+	def strike(self, userId: str, time: int, title: str = None, reason: str = None):
+		if time == 1:
+			time = 86400
+		elif time == 2:
+			time = 10800
+		elif time == 3:
+			time = 21600
+		elif time == 4:
+			time = 43200
+		elif time == 5:
+			time = 86400
+		else:
+			raise WrongType(time)
 
-	def ban(self, userId: str, reason: str, banType: int = None) -> int:
+		data = {
+			"uid": userId,
+			"title": title,
+			"content": reason,
+			"attachedObject": {
+				"objectId": userId,
+				"objectType": 0
+			},
+			"penaltyType": 1,
+			"penaltyValue": time,
+			"adminOpNote": {},
+			"noticeType": 4
+		}
+		return self.req.request("POST", f"/x{self.comId}/s/notice", data)
 
-		data = dumps({
+	def ban(self, userId: str, reason: str, banType: int = None):
+		data = {
 			"reasonType": banType,
 			"note": {
 				"content": reason
-			},
-			"timestamp": int(timestamp() * 1000)
-		})
+			}
+		}
+		return self.req.request("POST", f"/x{self.comId}/s/user-profile/{userId}/ban", data)
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/user-profile/{userId}/ban", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def unban(self, userId: str, reason: str) -> int:
-		data = dumps({
+	def unban(self, userId: str, reason: str):
+		data = {
 			"note": {
 				"content": reason
-			},
-			"timestamp": int(timestamp() * 1000)
-		})
+			}
+		}
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/user-profile/{userId}/unban", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+		return self.req.request("POST", f"/x{self.comId}/s/user-profile/{userId}/unban", data)
+
+	def reorder_featured_users(self, userIds: list):
+		data = { "uidList": userIds }
+		return self.req.request("POST", f"/x{self.comId}/s/user-profile/featured/reorder", data)
+
+	def get_hidden_blogs(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/feed/blog-disabled?start={start}&size={size}")["blogList"]
+	
+
+	def get_featured_users(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/user-profile?type=featured&start={start}&size={size}")
+
+	def review_quiz_questions(self, quizId: str):
+		return self.req.request("GET", f"/x{self.comId}/s/blog/{quizId}?action=review")["blog"]["quizQuestionList"]
+
+	def get_recent_quiz(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/blog?type=quizzes-recent&start={start}&size={size}")["blogList"]
+
+	def get_trending_quiz(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/feed/quiz-trending?start={start}&size={size}")["blogList"]
+
+	def get_best_quiz(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/feed/quiz-best-quizzes?start={start}&size={size}")["blogList"]
 
 
-	def hide(self, userId: str = None, chatId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, reason: str = None) -> int:
+	def purchase(self, objectId: str, objectType: int, aminoPlus: bool = True, autoRenew: bool = False):
+		data = {
+			"objectId": objectId,
+			"objectType": objectType,
+			"v": 1,
+			"paymentContext": {
+				'discountStatus': 1 if aminoPlus is True else 0,
+				'discountValue': 1,
+				'isAutoRenew': autoRenew
+			}
+		}
+
+		return self.req.request("POST", f"/x{self.comId}/s/store/purchase", data)
+
+
+	def apply_avatar_frame(self, avatarId: str, applyToAll: bool = True):
+		data = {
+			"frameId": avatarId,
+			"applyToAll": 1 if applyToAll is True else 0,
+		}
+		return self.req.request("POST", f"/x{self.comId}/s/avatar-frame/apply", data)
+
+	def invite_to_vc(self, chatId: str, userId: str):
+		data = { "uid": userId }
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/vvchat-presenter/invite/", data)
+
+	def add_poll_option(self, blogId: str, question: str):
+		data = {
+			"mediaList": None,
+			"title": question,
+			"type": 0
+		}
+		return self.req.request("POST", f"/x{self.comId}/s/blog/{blogId}/poll/option", data)
+
+	def create_wiki_category(self, title: str, parentCategoryId: str, media: list = None):
+		data = {
+			"icon": None,
+			"label": title,
+			"mediaList": media,
+			"parentCategoryId": parentCategoryId,
+		}
+		return self.req.request("POST", f"/x{self.comId}/s/item-category", data)
+		
+	def create_shared_folder(self,title: str):
+		data = { "title": title }
+		return self.req.request("POST", f"/x{self.comId}/s/shared-folder/folders", data)
+
+	def submit_to_wiki(self, wikiId: str, message: str):
+		data = {
+			"message": message,
+			"itemId": wikiId
+		}
+		return self.req.request("POST", f"/x{self.comId}/s/knowledge-base-request", data)
+
+	def accept_wiki_request(self, requestId: str, destinationCategoryIdList: list):
+		data = {
+			"destinationCategoryIdList": destinationCategoryIdList,
+			"actionType": "create"
+		}
+
+		return self.req.request("POST", f"/x{self.comId}/s/knowledge-base-request/{requestId}/approve", data)
+
+	def reject_wiki_request(self, requestId: str):
+		data = {}
+		return self.req.request("POST", f"/x{self.comId}/s/knowledge-base-request/{requestId}/reject", data)
+
+	def get_wiki_submissions(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/knowledge-base-request?type=all&start={start}&size={size}")["knowledgeBaseRequestList"]
+
+	def get_live_layer(self):
+		return self.req.request("GET", f"/x{self.comId}/s/live-layer/homepage?v=2")["liveLayerList"]
+
+	def apply_bubble(self, bubbleId: str, chatId: str, applyToAll: bool = False):
+		data = {
+			"applyToAll": 1 if applyToAll is True else 0,
+			"bubbleId": bubbleId,
+			"threadId": chatId,
+		}
+
+		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/apply-bubble", data)
+		
+
+	"""
+	ACM
+	"""
+
+	def create_community(self, name: str, tagline: str, icon: BinaryIO, themeColor: str, joinType: int = 0, primaryLanguage: str = "en"):
 
 		data = {
-			"adminOpNote": {
-				"content": reason
+			"icon": {
+				"height": 512.0,
+				"imageMatrix": [1.6875, 0.0, 108.0, 0.0, 1.6875, 497.0, 0.0, 0.0, 1.0],
+				"path": self.req.upload_media(icon),
+				"width": 512.0,
+				"x": 0.0,
+				"y": 0.0
 			},
-			"timestamp": int(timestamp() * 1000)
+			"joinType": joinType,
+			"name": name,
+			"primaryLanguage": primaryLanguage,
+			"tagline": tagline,
+			"templateId": 9,
+			"themeColor": themeColor
 		}
-		if userId:data["adminOpName"] = 18
-		else:
-			data["adminOpName"] = 110
-			data["adminOpValue"] = 9
-		data = dumps(data)		
 
-		if userId:part = f"user-profile/{userId}"
-		elif blogId or quizId:part = f"blog/{blogId or quizId}"
-		elif wikiId:part = f"item/{wikiId}"
-		elif chatId:part = f"chat/thread/{chatId}"
-		elif fileId:part = f"shared-folder/files/{fileId}"
-		else: raise exceptions.SpecifyType()
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/{part}/admin", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+		return self.req.request("POST", f"/g/s/community", data)
 
 
-	def unhide(self, userId: str = None, chatId: str = None, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, reason: str = None) -> int:
+	def get_community_themepack_info(self):
+		return self.req.request("POST", f"/g/s-x{self.comId}/community/info?withTopicList=1&withInfluencerList=1&influencerListOrderStrategy=fansCount")['community']['themePack']
 
+	def upload_themepack(self, file: BinaryIO):
+		return self.req.request("POST", f"/x{self.comId}/s/media/upload/target/community-theme-pack", data=file.read())
+
+	def delete_community(self, email: str, password: str, verificationCode: str):
 		data = {
-			"adminOpNote": {
-				"content": reason
-			},
-			"timestamp": int(timestamp() * 1000)
-		}
-		if userId:data["adminOpName"] = 19
-		else:
-			data["adminOpName"] = 110
-			data["adminOpValue"] = 0
-		data = dumps(data)		
-
-		if userId:part = f"user-profile/{userId}"
-		elif blogId or quizId:part = f"blog/{blogId or quizId}"
-		elif wikiId:part = f"item/{wikiId}"
-		elif chatId:part = f"chat/thread/{chatId}"
-		elif fileId:part = f"shared-folder/files/{fileId}"
-		else: raise exceptions.SpecifyType()
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/{part}/admin", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def increase_rank(self, userId: str, rank: str) -> int:
-		rank = rank.lower().replace("agent", "transfer-agent")
-		if rank.lower() not in ("transfer-agent", "leader", "curator"):raise exceptions.WrongType(rank)
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/user-profile/{userId}/{rank}", headers=self.get_headers())
-		return response.status_code
-
-	def add_influencer(self, userId: str, monthlyFee: int) -> int:
-		data = dumps({
-			"monthlyFee": monthlyFee,
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/influencer/{userId}", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-	def remove_influencer(self, userId: str) -> int:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/influencer/{userId}", headers=self.get_headers())
-		return response.status_code
-
-
-	def delete_community(self, email: str, password: str, verificationCode: str) -> int:
-
-		deviceId = self.deviceId
-		data = dumps({
 			"secret": f"0 {password}",
 			"validationContext": {
 				"data": {
@@ -1449,203 +1149,116 @@ class CommunityClient(Client):
 				"type": 1,
 				"identity": email
 			},
-			"deviceID": deviceId
-		})
+			"deviceID": self.deviceId
+		}
+		return self.req.request("POST", f"/g/s-x{self.comId}/community/delete-request", data)
 
-		response = self.make_request(method="POST", endpoint=f"/g/s-x{self.comId}/community/delete-request", data=data, headers=self.get_headers(data=data, deviceId=deviceId))
-		return response.status_code
+	def my_managed_communities(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/g/s/community/managed?start={start}&size={size}")["communityList"]
 
+	def get_categories(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/blog-category?start={start}&size={size}")
 
-
-	def get_hidden_blogs(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/feed/blog-disabled?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_featured_users(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/user-profile?type=featured&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def review_quiz_questions(self, quizId: str) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog/{quizId}?action=review", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_recent_quiz(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog?type=quizzes-recent&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def get_trending_quiz(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/feed/quiz-trending?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-	def get_best_quiz(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/feed/quiz-best-quizzes?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def add_poll_option(self, blogId: str, question: str) -> int:
-		data = dumps({
-			"mediaList": None,
-			"title": question,
-			"type": 0,
-			"timestamp": int(timestamp() * 1000)
-		})
-
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/blog/{blogId}/poll/option", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def create_wiki_category(self, title: str, parentCategoryId: str, content: str = None) -> int:
-		data = dumps({
-			"content": content,
-			"icon": None,
-			"label": title,
-			"mediaList": None,
-			"parentCategoryId": parentCategoryId,
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/item-category", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def create_shared_folder(self,title: str) -> int:
-		data = dumps({
-				"title":title,
-				"timestamp":int(timestamp() * 1000)
-			})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/shared-folder/folders", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def submit_to_wiki(self, wikiId: str, message: str) -> int:
-		data = dumps({
-			"message": message,
-			"itemId": wikiId,
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/knowledge-base-request", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def accept_wiki_request(self, requestId: str, destinationCategoryIdList: list) -> int:
-		data = dumps({
-			"destinationCategoryIdList": destinationCategoryIdList,
-			"actionType": "create",
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/knowledge-base-request/{requestId}/approve", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def reject_wiki_request(self, requestId: str) -> int:
-
-		data = dumps({})
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/knowledge-base-request/{requestId}/reject", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-	def get_wiki_submissions(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/knowledge-base-request?type=all&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-
-	def get_categories(self, start: int = 0, size: int = 25) -> ObjectCreator:
-
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/blog-category?start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def change_sidepanel_color(self, color: str) -> ObjectCreator:
-		data = dumps({
+	def change_sidepanel_color(self, color: str):
+		data = {
 			"path": "appearance.leftSidePanel.style.iconColor",
-			"value": color,
-			"timestamp": int(timestamp() * 1000)
-		})
+			"value": color
+		}
+		return self.req.request("POST", f"/x{self.comId}/s/community/configuration", data)
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/configuration", data=data, headers=self.get_headers(data=data))
-		return ObjectCreator(response.json())
+	def promote(self, userId: str, rank: str):
+		if rank not in AdministratorsRank.all:raise SpecifyType(f"[AdministratorsRank.all] -> Available ranks: {AdministratorsRank.all}")
+		rank = rank.lower().replace("agent", "transfer-agent")
+		return self.req.request("POST", f"/x{self.comId}/s/user-profile/{userId}/{rank}")
 
-
-	def upload_themepack_raw(self, file: BinaryIO) -> ObjectCreator:
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/media/upload/target/community-theme-pack", data=file.read(), headers=self.get_headers(data=file.read()))
-		return ObjectCreator(response.json())
+	def get_join_requests(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/community/membership-request?status=pending&start={start}&size={size}")
 	
+	def accept_join_request(self, userId: str):
+		data = {}
+		return self.req.request("POST", f"/x{self.comId}/s/community/membership-request/{userId}/accept", data)
+	
+	def reject_join_request(self, userId: str):
+		data = {}
+		return self.req.request("POST", f"/x{self.comId}/s/community/membership-request/{userId}/reject", data)
 
-	def get_community_stats(self) -> ObjectCreator:
+	def get_community_stats(self):
+		return self.req.request("GET", f"/x{self.comId}/s/community/stats")["communityStats"]
 
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/community/stats", headers=self.get_headers())
-		return ObjectCreator(response.json())
+	def get_community_moderation_stats(self, type: str, start: int = 0, size: int = 25):
+		if type.lower() not in ("leader", "curator"):raise WrongType(f"{type} not in ('leader', 'curator')")
+		return self.req.request("GET", f"/x{self.comId}/s/community/stats/moderation?type={type.lower()}&start={start}&size={size}")["userProfileList"]
 
-	def get_community_user_stats(self, type: str, start: int = 0, size: int = 25) -> ObjectCreator:
+	def change_welcome_message(self, message: str, isEnabled: bool = True):
 
-		if type.lower() not in ("leader", "curator"):raise exceptions.WrongType(type)
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/community/stats/moderation?type={'leader' if type.lower() == 'leader' else 'curator'}&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
-
-
-	def change_welcome_message(self, message: str, isEnabled: bool = True) -> int:
-		data = dumps({
+		data = {
 			"path": "general.welcomeMessage",
 			"value": {
 				"enabled": isEnabled,
 				"text": message
-			},
-			"timestamp": int(timestamp() * 1000)
-		})
+			}
+		}
+		return self.req.request("POST", f"/x{self.comId}/s/community/configuration", data)
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/configuration", data=data, headers=self.get_headers(data=data))
-		return response.status_code
-
-
-	def change_guidelines(self, message: str) -> int:
-		data = dumps({
-			"content": message,
-			"timestamp": int(timestamp() * 1000)
-		})
-
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/guideline", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+	def change_community_invite_permission(self, onlyAdmins: bool = True) -> int:
+		data = {
+			"path": "general.invitePermission",
+			"value": 2 if onlyAdmins is True else 1,
+			"timestamp": int(timestamp() * 1000),
+			"action": "set"
+		}
+		return self.req.request("POST", f"/x{self.comId}/s/community/configuration", data)
 
 
-	def change_module(self, module: str, isEnabled: bool) -> int:
+	def change_community_aminoId(self, aminoId: str):
+		data = {
+			"endpoint": aminoId,
+			"timestamp": int(timestamp()*1000)
+		}
+		return self.req.request("POST", f"/x{self.comId}/s/community/settings", data)
 
-		if module.lower() not in community_modules.keys():raise exceptions.SpecifyType()
-		data = dumps({
-			"path": community_modules.get(module.lower()),
-			"value": isEnabled,
-			"timestamp": int(timestamp() * 1000)
-		})
+	def change_guidelines(self, message: str):
 
-		response = self.make_request(method="POST", endpoint=f"/x{self.comId}/s/community/configuration", data=data, headers=self.get_headers(data=data))
-		return response.status_code
+		data = {"content": message}
+		return self.req.request("POST", f"/x{self.comId}/s/community/guideline", data)
 
-	def get_notice_list(self, start: int = 0, size: int = 25) -> ObjectCreator:
+	def edit_community(self, name: str = None, description: str = None, aminoId: str = None, primaryLanguage: str = None, themePackUrl: str = None):
 
-		response = self.make_request(method="GET", endpoint=f"/x{self.comId}/s/notice?type=management&status=1&start={start}&size={size}", headers=self.get_headers())
-		return ObjectCreator(response.json())
+		data = {"timestamp": int(timestamp() * 1000)}
 
-	def delete_pending_role(self, noticeId: str) -> int:
+		if name is not None:
+			data["name"] = name
+		if description is not None:
+			data["content"] = description
+		if aminoId is not None:
+			data["endpoint"] = aminoId
+		if primaryLanguage is not None:
+			data["primaryLanguage"] = primaryLanguage
+		if themePackUrl is not None:
+			data["themePackUrl"] = themePackUrl
+		
+		return self.req.request("POST", f"/x{self.comId}/s/community/settings", data)
 
-		response = self.make_request(method="DELETE", endpoint=f"/x{self.comId}/s/notice/{noticeId}", headers=self.get_headers())
-		return response.status_code
+	def change_module(self, module: str, isEnabled: bool):
+		if module not in CommunityModules.all:raise SpecifyType(f"[CommunityModules.all] -> Available community modules: {CommunityModules.all}")
+		data = {
+			"path": module,
+			"value": isEnabled
+		}
+		return self.req.request("POST", f"/x{self.comId}/s/community/configuration", data)
+	
+	def add_influencer(self, userId: str, monthlyFee: int):
+		data = {
+			"monthlyFee": monthlyFee
+		}
+		return self.req.request("POST", f"/x{self.comId}/s/influencer/{userId}", data)
+		
 
-#OTHER=============================
+	def remove_influencer(self, userId: str):
+		return self.req.request("DELETE", f"/x{self.comId}/s/influencer/{userId}")
 
-	def get_live_layer(self) -> ObjectCreator:
+	def get_notice_list(self, start: int = 0, size: int = 25):
+		return self.req.request("GET", f"/x{self.comId}/s/notice?type=management&status=1&start={start}&size={size}")["noticeList"]
 
-		response = self.make_request(method="GET", endpoint=f"/s/live-layer/homepage?v=2", headers=self.get_headers())
-		return ObjectCreator(response.json())
+	def delete_pending_role(self, noticeId: str):
+		return self.req.request("DELETE", f"/x{self.comId}/s/notice/{noticeId}")
