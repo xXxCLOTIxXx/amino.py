@@ -14,6 +14,7 @@ from ujson import dumps
 from typing import BinaryIO, Union
 from aiofiles.threadpool.binary import AsyncBufferedReader
 from mimetypes import guess_type
+from time import time
 
 
 def header(uid: str = None, sid: str = None, user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", language: str = "en", deviceId: str = None, data: bytes = None, content_type: str = "application/json"):
@@ -51,8 +52,10 @@ class requestsBuilder:
 		self.proxies = proxies
 
 
-	def request(self, method: str, endpoint: str, data: Union[str, bytes] = None, successfully: int = 200, timeout=None, base_url: str = api, content_type= "application/json") -> dict:
-		if isinstance(data, dict): data = dumps(data)
+	def request(self, method: str, endpoint: str, data: Union[str, bytes, dict] = None, successfully: int = 200, timeout=None, base_url: str = api, content_type= "application/json") -> dict:
+		if isinstance(data, dict):
+			data["timestamp"] = int(time() * 1000)
+			data = dumps(data)
 		if method.lower() == "post":content_type=content_type if data is not None else "application/x-www-form-urlencoded"
 		else:content_type = None
 

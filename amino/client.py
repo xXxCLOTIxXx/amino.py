@@ -30,6 +30,10 @@ class Client(Socket):
 		self.socket_enable = socket_enable
 		Socket.__init__(self, sock_trace, sock_debug)
 
+
+	def __repr__(self):
+		return repr(f"class Client <sid={self.sid}, userId={self.userId}, deviceId={self.deviceId}, user_agent={self.profile.user_agent}, language={self.language}>")
+
 	
 	@property
 	def profile(self):
@@ -280,7 +284,7 @@ class Client(Socket):
 		raise SpecifyType()
 
 
-	def get_blog_comments(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, sorting: str = Sorting.newest, start: int = 0, size: int = 25) -> dict:
+	def get_blog_comments(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, sorting: str = Sorting.Newest, start: int = 0, size: int = 25) -> dict:
 		if sorting not in Sorting.all:raise WrongType(sorting)
 		if blogId or quizId:url = f"/g/s/blog/{quizId if not blogId else blogId}/comment"
 		elif wikiId:url = f"/g/s/item/{wikiId}/comment"
@@ -288,7 +292,7 @@ class Client(Socket):
 		else:raise SpecifyType
 		return self.req.request("GET", f"{url}?sort={sorting}&start={start}&size={size}")["commentList"]
 
-	def get_wall_comments(self, userId: str, sorting: str = Sorting.newest, start: int = 0, size: int = 25) -> dict:
+	def get_wall_comments(self, userId: str, sorting: str = Sorting.Newest, start: int = 0, size: int = 25) -> dict:
 		if sorting not in Sorting.all:raise WrongType(sorting)
 		return self.req.request("GET", f"/g/s/user-profile/{userId}/g-comment?sort={sorting}&start={start}&size={size}")["commentList"]
 
@@ -313,7 +317,7 @@ class Client(Socket):
 
 
 
-	def send_message(self, chatId: str, message: str = None, messageType: int = 0, file: BinaryIO = None, fileType: str = UploadType.image, replyTo: str = None, mentionUserIds: list = None, stickerId: str = None, embedId: str = None, embedType: int = None, embedLink: str = None, embedTitle: str = None, embedContent: str = None, embedImage: BinaryIO = None) -> dict:
+	def send_message(self, chatId: str, message: str = None, messageType: int = 0, file: BinaryIO = None, fileType: str = UploadType.image_png, replyTo: str = None, mentionUserIds: list = None, stickerId: str = None, embedId: str = None, embedType: int = None, embedLink: str = None, embedTitle: str = None, embedContent: str = None, embedImage: BinaryIO = None) -> dict:
 		if message is not None:
 			message = message.replace("<@", "‎‏").replace("@>", "‬‭")
 		mentions = []
@@ -347,13 +351,13 @@ class Client(Socket):
 			if fileType == UploadType.audio:
 				data["type"] = 2
 				data["mediaType"] = 110
-			elif fileType == UploadType.image:
+			elif fileType in (UploadType.image_png, UploadType.image_jpg):
 				data["mediaType"] = 100
-				data["mediaUploadValueContentType"] = UploadType.image
+				data["mediaUploadValueContentType"] = fileType
 				data["mediaUhqEnabled"] = True
 			elif fileType == UploadType.gif:
 				data["mediaType"] = 100
-				data["mediaUploadValueContentType"] = UploadType.gif
+				data["mediaUploadValueContentType"] = fileType
 				data["mediaUhqEnabled"] = True
 			else: raise SpecifyType
 			data["mediaUploadValue"] = b64encode(file.read()).decode()
@@ -695,16 +699,16 @@ class Client(Socket):
 		return self.req.request("GET", f"/g/s/block/full-list")["blockerUidList"]
 	
 	def set_privacy_status(self, isAnonymous: bool = False, getNotifications: bool = False):
-		data = {"privacyMode": 2 if isAnonymous else 1, "timestamp": int(timestamp() * 1000)}
+		data = {"privacyMode": 2 if isAnonymous else 1}
 		if not getNotifications:data["notificationStatus"] = 2
 		else:data["privacyMode"] = 1
 
-		return self.req.request("POST", f"/g/s/account/visit-settings", data=data)
+		return self.req.request("POST", f"/g/s/account/visit-settings", data)
 	
 
 
 	def edit_chat(self, chatId: str, title: str = None, icon: str = None, content: str = None, announcement: str = None, keywords: list = None, pinAnnouncement: bool = None, publishToGlobal: bool = None, fansOnly: bool = None):
-		data = {"timestamp": int(timestamp() * 1000)}
+		data = {}
 
 		if title:
 			data["title"] = title
@@ -720,45 +724,37 @@ class Client(Socket):
 			data["extensions"] = {"pinAnnouncement": pinAnnouncement}
 		if fansOnly:
 			data["extensions"] = {"fansOnly": fansOnly}
-		if publishToGlobal:
-			data["publishToGlobal"] = 0
-		if not publishToGlobal:
-			data["publishToGlobal"] = 1
+		if publishToGlobal is not None:
+			data["publishToGlobal"] = 0 if publishToGlobal is True else 1
 
-		return self.req.request("POST", f"/g/s/chat/thread/{chatId}", data=data)
+		return self.req.request("POST", f"/g/s/chat/thread/{chatId}", data)
 
 
 
 	def do_not_disturb(self, chatId: str, doNotDisturb: bool = True) -> dict:
 		data = {
 			"alertOption": 2 if doNotDisturb else 1,
-			"timestamp": int(timestamp() * 1000)
 		}
-		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/member/{self.profile.userId}/alert", data=data)
+		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/member/{self.userId}/alert", data)
 
 
 
 
 	def pin_chat(self, chatId: str, pin: bool = True) -> dict:
-		data = {
-			"timestamp": int(timestamp() * 1000)
-		}
-		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/{'pin' if pin else 'unpin'}", data=data)
+		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/{'pin' if pin else 'unpin'}", {})
 
 
 	def set_chat_background(self, chatId: str, backgroundImage: BinaryIO) -> dict:
 		data = {
-			"timestamp": int(timestamp() * 1000),
 			"media": [100, self.req.upload_media(backgroundImage).mediaValue, None]
 		}
-		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/member/{self.profile.userId}/background", data=data)
+		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/member/{self.userId}/background", data)
 	
 	def add_co_hosts(self, chatId: str, coHosts: list) -> dict:
 		data = {
-			"timestamp": int(timestamp() * 1000),
 			"uidList": coHosts
 		}
-		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/co-host", data=data)
+		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/co-host", data)
 
 	def chat_view_only(self, chatId: str, viewOnly: bool = False) -> dict:
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}")

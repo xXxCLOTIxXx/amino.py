@@ -1,6 +1,6 @@
 class Sorting:
-    newest: str = "newest"
-    oldest: str = "oldest"
-    top: str = "vote"
+    Newest: str = "newest"
+    Oldest: str = "oldest"
+    Top: str = "vote"
 
-    all: list = [newest, oldest, top]
+    all: list = [Newest, Oldest, Top]
