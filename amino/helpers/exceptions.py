@@ -1,5 +1,4 @@
-from json.decoder import JSONDecodeError
-from json import loads
+from ujson import loads, JSONDecodeError
 
 class UnknownError(Exception):
 	"""
@@ -889,7 +888,6 @@ exceptions_list = {
 }
 
 def check_exceptions(data, status):
-	print(data)
 	try:
 		data = loads(data)
 		try:code = data["api:statuscode"]
