@@ -34,6 +34,31 @@ import amino
 client = amino.Client()
 client.login(email='email', password='password')
 ```
+<h1 align="center">Ping pong bot</h1>
+
+```python
+import amino
+
+client = amino.Client()
+client.login(email='email', password='password')
+print(f"LOGIN: OK.")
+
+
+@client.event(amino.arguments.wsEvent.on_text_message)
+def text_msg(data: amino.objects.Event):
+    if data.comId is None or data.message.author.uid == client.userId: return
+    print(f"New message: {data.message.content}")
+    try:
+        com_client = amino.CommunityClient(client.profile, data.comId)
+        if data.message.content.lower().split(" ")[0] == "ping":
+            com_client.send_message(data.message.threadId, "Pong!", replyTo=data.message.messageId)
+        elif data.message.content.lower().split(" ")[0] == "pong":
+            com_client.send_message(data.message.threadId, "Ping!", replyTo=data.message.messageId)
+    except Exception as e:
+        print(e)
+
+
+```
 
 <p align="center">
 <a href="https://github.com/xXxCLOTIxXx/amino.py/blob/main/docs/main.md">
