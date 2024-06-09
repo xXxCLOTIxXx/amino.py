@@ -2,6 +2,8 @@ from .objects.auth_data import auth_data
 from .helpers.requests_builder import AsyncRequestsBuilder
 from .helpers.generator import timezone
 
+from .objects.reqObjects import DynamicObject
+
 
 class AsyncCommunityClient:
 	req: AsyncRequestsBuilder
@@ -30,5 +32,5 @@ class AsyncCommunityClient:
 
 
 
-	async def check_in(self, tz: int = None) -> dict:
+	async def check_in(self, tz: int = None) -> DynamicObject:
 		return await self.req.request("POST", f"/x{self.comId}/s/check-in", { "timezone": tz if tz else timezone()})

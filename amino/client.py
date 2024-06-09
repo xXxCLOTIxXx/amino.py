@@ -3,15 +3,15 @@ from .helpers.requests_builder import requestsBuilder
 from .helpers.generator import generate_deviceId, sid_to_uid
 from .helpers.exceptions import SpecifyType, WrongType, UnsupportedLanguage
 from .ws.socket import Socket
-from .objects.reqObjects import UserProfile
+from .objects.reqObjects import DynamicObject
 
-from .objects.args import Gender, UploadType, Sorting
+from .objects.args import Gender, UploadType, Sorting, MessageTypes
 
-
-from time import time as timestamp
+from time import time
 from typing import Union, BinaryIO
 from base64 import b64encode
 from uuid import uuid4
+from mimetypes import guess_type
 
 
 class Client(Socket):
@@ -58,7 +58,7 @@ class Client(Socket):
 
 
 
-	def login(self, email: str, password: str = None, secret: str = None) -> UserProfile:
+	def login(self, email: str, password: str = None, secret: str = None) -> DynamicObject:
 		if password is None and secret is None: raise SpecifyType
 		result = self.req.request("POST", "/g/s/auth/login", {
 			"email": email,
@@ -67,16 +67,15 @@ class Client(Socket):
 			"deviceID": self.deviceId,
 			"clientType": 100,
 			"action": "normal",
-			"timestamp": int(timestamp() * 1000)
 		})
 		self.req.profile.sid, self.req.profile.uid = result["sid"], result["auid"]
 		if self.socket_enable:
-			final = f"{self.deviceId}|{int(timestamp() * 1000)}"
+			final = f"{self.deviceId}|{int(time() * 1000)}"
 			self.ws_connect(final=final, headers=self.ws_headers(self.sid, final, self.deviceId))
-		return UserProfile(result["userProfile"])
+		return result["userProfile"]
 
 
-	def login_phone(self, phone: str, password: str = None, secret: str = None) -> UserProfile:
+	def login_phone(self, phone: str, password: str = None, secret: str = None) -> DynamicObject:
 		if password is None and secret is None: raise SpecifyType
 		result = self.req.request("POST", "/g/s/auth/login", {
 			"phoneNumber": phone,
@@ -85,93 +84,85 @@ class Client(Socket):
 			"deviceID": self.deviceId,
 			"clientType": 100,
 			"action": "normal",
-			"timestamp": int(timestamp() * 1000)
 		})
 		self.req.profile.sid, self.req.profile.uid = result["sid"], result["auid"]
 		if self.socket_enable:
-			final = f"{self.deviceId}|{int(timestamp() * 1000)}"
+			final = f"{self.deviceId}|{int(time() * 1000)}"
 			self.ws_connect(final=final, headers=self.ws_headers(self.sid, final, self.deviceId))
-		return UserProfile(result["userProfile"])
+		return result["userProfile"]
 
 	
 	def login_sid(self, sid: str) -> auth_data:
 		self.req.profile.sid, self.req.profile.uid = sid, sid_to_uid(sid)
 		if self.socket_enable:
-			final = f"{self.deviceId}|{int(timestamp() * 1000)}"
+			final = f"{self.deviceId}|{int(time() * 1000)}"
 			self.ws_connect(final=final, headers=self.ws_headers(self.sid, final, self.deviceId))
 		return self.profile
 
 
 
-	def logout(self) -> dict:
+	def logout(self) -> DynamicObject:
 		result = self.req.request("POST", "/g/s/auth/logout", {
 			"deviceID": self.profile.deviceId,
 			"clientType": 100,
-			"timestamp": int(timestamp() * 1000)
 		})
 		self.req.profile.sid, self.req.profile.uid = None, None
 		if self.socket_enable:self.ws_disconnect()
 		return result
 
-	def restore_account(self, email: str, password: str) -> dict:
+	def restore_account(self, email: str, password: str) -> DynamicObject:
 		return self.req.request("POST", "/g/s/account/delete-request/cancel", {
 			"secret": f"0 {password}",
 			"deviceID": self.deviceId,
 			"email": email,
-			"timestamp": int(timestamp() * 1000)
 		})
 
-	def configure_profile(self, age: int, gender: int = Gender.non_binary) -> dict:
+	def configure_profile(self, age: int, gender: int = Gender.non_binary) -> DynamicObject:
 		if gender not in Gender.all:raise SpecifyType
 		return self.req.request("POST", "/g/s/persona/profile/basic", {
 			"age": max(13, age),
 			"gender": gender,
-			"timestamp": int(timestamp() * 1000)
 		})	
 
 
-	def verify_account(self, email: str, code: str) -> dict:
+	def verify_account(self, email: str, code: str) -> DynamicObject:
 		return self.req.request("POST", "/g/s/auth/check-security-validation", {
 			"validationContext": {
 				"type": 1,
 				"identity": email,
 				"data": {"code": code}},
 			"deviceID": self.deviceId,
-			"timestamp": int(timestamp() * 1000)
 		})
 
 
-	def request_verify_code(self, email: str, resetPassword: bool = False) -> dict:
+	def request_verify_code(self, email: str, resetPassword: bool = False) -> DynamicObject:
 		data = {
 			"identity": email,
 			"type": 1,
 			"deviceID": self.deviceId,
-			"timestamp": int(timestamp() * 1000)
 		}
 		if resetPassword is True:
 			data["level"] = 2
 			data["purpose"] = "reset-password"
 		return self.req.request("POST", "/g/s/auth/request-security-validation", data)
 
-	def activate_account(self, email: str, code: str) -> dict:
+	def activate_account(self, email: str, code: str) -> DynamicObject:
 		return self.req.request("POST", "/g/s/auth/activate-email", {
 			"type": 1,
 			"identity": email,
 			"data": {"code": code},
 			"deviceID": self.deviceId,
-			"timestamp": int(timestamp() * 1000)
 		})
 
 
-	def delete_account(self, password: str) -> dict:
+	def delete_account(self, password: str) -> DynamicObject:
 		return self.req.request("POST", "/g/s/account/delete-request", {
 			"deviceID": self.deviceId,
 			"secret": f"0 {password}",
-			"timestamp": int(timestamp() * 1000)
 		})
 
 
-	def change_password(self, email: str, password: str, code: str) -> dict:
+	def change_password(self, email: str, password: str, code: str) -> DynamicObject:
 		return self.req.request("POST", "/g/s/auth/reset-password", {
 			"updateSecret": f"0 {password}",
 			"emailValidationContext": {
@@ -185,45 +176,44 @@ class Client(Socket):
 			},
 			"phoneNumberValidationContext": None,
 			"deviceID": self.deviceId,
-			"timestamp": int(timestamp() * 1000)
 		})
 
-	def get_eventlog(self) -> dict:
+	def get_eventlog(self) -> DynamicObject:
 		return self.req.request("GET", f"/g/s/eventlog/profile?language={self.language}")
 
 
 
-	def get_account_info(self) -> UserProfile:
-		return UserProfile(self.req.request("GET", "/g/s/account")["account"])
+	def get_account_info(self):
+		return self.req.request("GET", "/g/s/account")["account"]
 
 
-	def my_communities(self, start: int = 0, size: int = 25) -> dict:
+	def my_communities(self, start: int = 0, size: int = 25) -> DynamicObject:
 		return self.req.request("GET", f"/g/s/community/joined?v=1&start={start}&size={size}")["communityList"]
 
 
-	def profiles_in_communities(self, start: int = 0, size: int = 25) -> dict:
+	def profiles_in_communities(self, start: int = 0, size: int = 25) -> DynamicObject:
 		return self.req.request("GET", f"/g/s/community/joined?v=1&start={start}&size={size}")["userInfoInCommunities"]
 
 
-	def get_user_info(self, userId: str) -> UserProfile:
-		return UserProfile(self.req.request("GET", f"/g/s/user-profile/{userId}")["userProfile"])
+	def get_user_info(self, userId: str):
+		return self.req.request("GET", f"/g/s/user-profile/{userId}")["userProfile"]
 
-	def get_my_chats(self, start: int = 0, size: int = 25) -> dict:
+	def get_my_chats(self, start: int = 0, size: int = 25) -> DynamicObject:
 		return self.req.request("GET", f"/g/s/chat/thread?type=joined-me&start={start}&size={size}")["threadList"]
 
-	def get_chat(self, chatId: str) -> dict:
+	def get_chat(self, chatId: str) -> DynamicObject:
 		return self.req.request("GET", f"/g/s/chat/thread/{chatId}")["thread"]
 
-	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25) -> dict:
+	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25) -> DynamicObject:
 		return self.req.request("GET", f"/g/s/chat/thread/{chatId}/member?cv=1.2&type=default&start={start}&size={size}")["memberList"]
 
-	def join_chat(self, chatId: str) -> dict:
+	def join_chat(self, chatId: str) -> DynamicObject:
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/member/{self.userId}")
 
 	def leave_chat(self, chatId: str):
 		return self.req.request("DELETE", f"/g/s/chat/thread/{chatId}/member/{self.userId}")
 
-	def start_chat(self, userId: Union[str, list, tuple], message: str, title: str = None, content: str = None, isGlobal: bool = False, publishToGlobal: bool = False) -> dict:
+	def start_chat(self, userId: Union[str, list, tuple], message: str, title: str = None, content: str = None, isGlobal: bool = False, publishToGlobal: bool = False) -> DynamicObject:
 		if isinstance(userId, (str, list, tuple)):userIds = list(userId)
 		else:raise WrongType(type(userId))
 		data = {
@@ -233,47 +223,45 @@ class Client(Socket):
 			"content": content,
 			"type": 2 if isGlobal else 0,
 			"publishToGlobal": 1 if publishToGlobal else 0,
-			"timestamp": int(timestamp() * 1000)
 		}
 		if isGlobal:data["eventSource"] = "GlobalComposeMenu"
 		return self.req.request("POST", f"/g/s/chat/thread", data=data)["thread"]
 
-	def invite_to_chat(self, userId: Union[str, list], chatId: str) -> dict:
+	def invite_to_chat(self, userId: Union[str, list], chatId: str) -> DynamicObject:
 		if not isinstance(userId, (str, list)):raise WrongType(type(userId))
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/member/invite", {
 			"uids": list(userId) if isinstance(userId, str) else userId,
-			"timestamp": int(timestamp() * 1000)
 		})
 
 
-	def kick(self, userId: str, chatId: str, allowRejoin: bool = True) -> dict:
+	def kick(self, userId: str, chatId: str, allowRejoin: bool = True) -> DynamicObject:
 		return self.req.request("DELETE", f"/g/s/chat/thread/{chatId}/member/{userId}?allowRejoin={int(allowRejoin)}")
 
-	def get_chat_messages(self, chatId: str, size: int = 25, pageToken: str = None) -> dict:
+	def get_chat_messages(self, chatId: str, size: int = 25, pageToken: str = None) -> DynamicObject:
 		return self.req.request("GET", f"/g/s/chat/thread/{chatId}/message?pagingType=t&size={size}{f'&pageToken={pageToken}' if pageToken else ''}")
 
-	def get_message_info(self, chatId: str, messageId: str) -> dict:
+	def get_message_info(self, chatId: str, messageId: str) -> DynamicObject:
 		return self.req.request("GET", f"/g/s/chat/thread/{chatId}/message/{messageId}")["message"]
 
-	def get_community_info(self, comId: int) -> dict:
+	def get_community_info(self, comId: int) -> DynamicObject:
 		return self.req.request("GET", f"/g/s-x{comId}/community/info?withInfluencerList=1&withTopicList=true&influencerListOrderStrategy=fansCount")["community"]
 
-	def search_community(self, aminoId: str) -> dict:
+	def search_community(self, aminoId: str) -> DynamicObject:
 		return self.req.request("GET", f"/g/s/search/amino-id-and-link?q={aminoId}")["resultList"]
 
-	def get_user_following(self, userId: str, start: int = 0, size: int = 25) -> dict:
+	def get_user_following(self, userId: str, start: int = 0, size: int = 25) -> DynamicObject:
 		return self.req.request("GET", f"/g/s/user-profile/{userId}/joined?start={start}&size={size}")["userProfileList"]
 
-	def get_user_followers(self, userId: str, start: int = 0, size: int = 25) -> dict:
+	def get_user_followers(self, userId: str, start: int = 0, size: int = 25) -> DynamicObject:
 		return self.req.request("GET", f"/g/s/user-profile/{userId}/member?start={start}&size={size}")["userProfileList"]
 
 	def get_blocked_users(self, start: int = 0, size: int = 25):
 		return self.req.request("GET", f"/g/s/block?start={start}&size={size}")["userProfileList"]
 
-	def get_blocker_users(self, start: int = 0, size: int = 25) -> dict:
+	def get_blocker_users(self, start: int = 0, size: int = 25) -> DynamicObject:
 		return self.req.request("GET", f"/g/s/block/full-list?start={start}&size={size}")["blockerUidList"]
 	
-	def get_blog_info(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None) -> dict:
+	def get_blog_info(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None) -> DynamicObject:
 
 		if blogId or quizId:
 			return self.req.request("GET", f"/g/s/blog/{quizId if quizId is not None else blogId}")
@@ -284,7 +272,7 @@ class Client(Socket):
 		raise SpecifyType()
 
 
-	def get_blog_comments(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, sorting: str = Sorting.Newest, start: int = 0, size: int = 25) -> dict:
+	def get_blog_comments(self, blogId: str = None, wikiId: str = None, quizId: str = None, fileId: str = None, sorting: str = Sorting.Newest, start: int = 0, size: int = 25) -> DynamicObject:
 		if sorting not in Sorting.all:raise WrongType(sorting)
 		if blogId or quizId:url = f"/g/s/blog/{quizId if not blogId else blogId}/comment"
 		elif wikiId:url = f"/g/s/item/{wikiId}/comment"
@@ -292,15 +280,14 @@ class Client(Socket):
 		else:raise SpecifyType
 		return self.req.request("GET", f"{url}?sort={sorting}&start={start}&size={size}")["commentList"]
 
-	def get_wall_comments(self, userId: str, sorting: str = Sorting.Newest, start: int = 0, size: int = 25) -> dict:
+	def get_wall_comments(self, userId: str, sorting: str = Sorting.Newest, start: int = 0, size: int = 25) -> DynamicObject:
 		if sorting not in Sorting.all:raise WrongType(sorting)
 		return self.req.request("GET", f"/g/s/user-profile/{userId}/g-comment?sort={sorting}&start={start}&size={size}")["commentList"]
 
-	def flag(self, reason: str, flagType: int, userId: str = None, blogId: str = None, wikiId: str = None, asGuest: bool = False) -> dict:
+	def flag(self, reason: str, flagType: int, userId: str = None, blogId: str = None, wikiId: str = None, asGuest: bool = False) -> DynamicObject:
 		data = {
 			"flagType": flagType,
 			"message": reason,
-			"timestamp": int(timestamp() * 1000)
 		}
 		if userId:
 			data["objectId"] = userId
@@ -317,7 +304,7 @@ class Client(Socket):
 
 
 
-	def send_message(self, chatId: str, message: str = None, messageType: int = 0, file: BinaryIO = None, fileType: str = UploadType.image_png, replyTo: str = None, mentionUserIds: list = None, stickerId: str = None, embedId: str = None, embedType: int = None, embedLink: str = None, embedTitle: str = None, embedContent: str = None, embedImage: BinaryIO = None) -> dict:
+	def send_message(self, chatId: str, message: str = None, messageType: int = MessageTypes.Text, file: BinaryIO = None, replyTo: str = None, mentionUserIds: list = None, stickerId: str = None, embedId: str = None, embedType: int = None, embedLink: str = None, embedTitle: str = None, embedContent: str = None, embedImage: BinaryIO = None) -> DynamicObject:
 		if message is not None:
 			message = message.replace("<@", "‎‏").replace("@>", "‬‭")
 		mentions = []
@@ -328,7 +315,7 @@ class Client(Socket):
 		data = {
 			"type": messageType,
 			"content": message,
-			"clientRefId": int(timestamp() / 10 % 1000000000),
+			"clientRefId": int(time() / 10 % 1000000000),
 			"attachedObject": {
 				"objectId": embedId,
 				"objectType": embedType,
@@ -338,18 +325,18 @@ class Client(Socket):
 				"mediaList": embedImage
 			},
 			"extensions": {"mentionedArray": mentions},
-			"timestamp": int(timestamp() * 1000)
 		}
 		if replyTo: data["replyMessageId"] = replyTo
 		if stickerId:
 			data["content"] = None
 			data["stickerId"] = stickerId
-			data["type"] = 3
+			data["type"] = MessageTypes.Sticker
 
 		if file:
 			data["content"] = None
+			fileType = guess_type(file.name)[0]
 			if fileType == UploadType.audio:
-				data["type"] = 2
+				data["type"] = MessageTypes.Voice
 				data["mediaType"] = 110
 			elif fileType in (UploadType.image_png, UploadType.image_jpg):
 				data["mediaType"] = 100
@@ -359,25 +346,23 @@ class Client(Socket):
 				data["mediaType"] = 100
 				data["mediaUploadValueContentType"] = fileType
 				data["mediaUhqEnabled"] = True
-			else: raise SpecifyType
+			else: raise WrongType("file type not allowed.")
 			data["mediaUploadValue"] = b64encode(file.read()).decode()
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/message", data)
 
-	def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str = None) -> dict:
+	def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str = None) -> DynamicObject:
 		if asStaff:
 			data = {
 				"adminOpName": 102,
-				"timestamp": int(timestamp() * 1000)
 			}
 			if reason:data["adminOpNote"] = {"content": reason}
 			return self.req.request("POST", f"/g/s/chat/thread/{chatId}/message/{messageId}/admin", data)
 		else:return self.req.request("DELETE", f"/g/s/chat/thread/{chatId}/message/{messageId}", data)
 
 
-	def mark_as_read(self, chatId: str, messageId: str) -> dict:
+	def mark_as_read(self, chatId: str, messageId: str) -> DynamicObject:
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/mark-as-read", {
 			"messageId": messageId,
-			"timestamp": int(timestamp() * 1000)
 		})
 
 	def send_coins(self, coins: int, blogId: str = None, chatId: str = None, objectId: str = None, transactionId: str = None):
@@ -388,7 +373,6 @@ class Client(Socket):
 		data = {
 			"coins": coins,
 			"tippingContext": {"transactionId": transactionId if transactionId else str(uuid4())},
-			"timestamp": int(timestamp() * 1000)
 		}
 
 		if blogId is not None:
@@ -408,7 +392,7 @@ class Client(Socket):
 		if isinstance(userId, str):
 			return self.req.request("POST", f"/g/s/user-profile/{userId}/member")
 		elif isinstance(userId, list):
-			data = {"targetUidList": userId, "timestamp": int(timestamp() * 1000)}
+			data = {"targetUidList": userId}
 			return self.req.request("POST", f"/g/s/user-profile/{self.profile.userId}/joined", data=data)
 		else: raise WrongType
 
@@ -423,12 +407,12 @@ class Client(Socket):
 
 	def join_community(self, comId: int, invitationId: str = None):
 		
-		data = {"timestamp": int(timestamp() * 1000)}
+		data = {}
 		if invitationId:data["invitationId"] = invitationId
 		return self.req.request("POST", f"/x{comId}/s/community/join", data=data)
 
 	def request_join_community(self, comId: int, message: str = None):
-		return self.req.request("POST", f"/x{comId}/s/community/membership-request", data={"message": message, "timestamp": int(timestamp() * 1000)})
+		return self.req.request("POST", f"/x{comId}/s/community/membership-request", data={"message": message})
 
 	def leave_community(self, comId: int):
 		return self.req.request("POST", f"/x{comId}/s/community/leave")
@@ -440,7 +424,6 @@ class Client(Socket):
 			"objectType": 16,
 			"flagType": flagType,
 			"message": reason,
-			"timestamp": int(timestamp() * 1000)
 		}
 		return self.req.request("POST", f"/x{comId}/s/{'g-flag' if isGuest else 'flag'}", data=data)
 
@@ -453,7 +436,6 @@ class Client(Socket):
 			"longitude": 0,
 			"mediaList": None,
 			"eventSource": "UserProfileView",
-			"timestamp": int(timestamp() * 1000)
 		}
 
 		if nickname:
@@ -497,7 +479,6 @@ class Client(Socket):
 			"content": message,
 			"stickerId": None,
 			"type": 0,
-			"timestamp": int(timestamp() * 1000)
 		}
 
 
@@ -534,7 +515,6 @@ class Client(Socket):
 
 		data = {
 			"value": 4,
-			"timestamp": int(timestamp() * 1000)
 		}
 
 		if blogId:
@@ -565,7 +545,6 @@ class Client(Socket):
 		
 		data = {
 			"value": 4,
-			"timestamp": int(timestamp() * 1000)
 		}
 		if userId:
 			data["eventSource"] = "UserProfileView"
@@ -616,7 +595,6 @@ class Client(Socket):
 			"objectId": objectId,
 			"targetCode": 1,
 			"objectType": objectType,
-			"timestamp": int(timestamp() * 1000)
 		}
 
 		return self.req.request("POST", f"/g/{f's-x{comId}' if comId else 's'}/link-resolution", data=data)["linkInfoV2"]
@@ -626,31 +604,30 @@ class Client(Socket):
 		return self.req.request("GET", f"/g/s/community-collection/supported-languages?start=0&size=100")["supportedLanguages"]
 
 
-	def claim_coupon(self) -> dict:
+	def claim_coupon(self) -> DynamicObject:
 		return self.req.request("GET", f"/g/s/coupon/new-user-coupon/claim")
 	
 
 	def get_subscriptions(self, start: int = 0, size: int = 25) -> list:
 		return self.req.request("GET", f"/g/s/store/subscription?objectType=122&start={start}&size={size}")["storeSubscriptionItemList"]
 
-	def get_all_users(self, start: int = 0, size: int = 25) -> dict:
+	def get_all_users(self, start: int = 0, size: int = 25) -> DynamicObject:
 		return self.req.request("GET", f"/g/s/user-profile?type=recent&start={start}&size={size}")
 	
 
 
-	def transfer_host(self, chatId: str, userIds: list) -> dict:
+	def transfer_host(self, chatId: str, userIds: list) -> DynamicObject:
 		data = {
 			"uidList": userIds,
-			"timestamp": int(timestamp() * 1000)
 		}
 
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/transfer-organizer", data=data)
 	
 
-	def accept_host(self, chatId: str, requestId: str) -> dict:
+	def accept_host(self, chatId: str, requestId: str) -> DynamicObject:
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept")
 
-	def delete_co_host(self, chatId: str, userId: str) -> dict:
+	def delete_co_host(self, chatId: str, userId: str) -> DynamicObject:
 		return self.req.request("DELETE", f"/g/s/chat/thread/{chatId}/co-host/{userId}")
 
 
@@ -662,7 +639,6 @@ class Client(Socket):
 	def invite_to_vc(self, chatId: str, userId: str):
 		data = {
 			"uid": userId,
-			"timestamp": int(timestamp() * 1000)
 		}
 
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/vvchat-presenter/invite", data=data)
@@ -671,7 +647,6 @@ class Client(Socket):
 	def wallet_config(self, level: int):
 		data = {
 			"adsLevel": level,
-			"timestamp": int(timestamp() * 1000)
 		}
 	
 		return self.req.request("POST", f"/g/s/wallet/ads/config", data=data)
@@ -687,7 +662,6 @@ class Client(Socket):
 				"discountStatus": 0,
 				"isAutoRenew": isAutoRenew
 			},
-			"timestamp": int(timestamp() * 1000)
 		}
 
 		return self.req.request("POST", f"/g/s/store/purchase", data=data)
@@ -731,7 +705,7 @@ class Client(Socket):
 
 
 
-	def do_not_disturb(self, chatId: str, doNotDisturb: bool = True) -> dict:
+	def do_not_disturb(self, chatId: str, doNotDisturb: bool = True) -> DynamicObject:
 		data = {
 			"alertOption": 2 if doNotDisturb else 1,
 		}
@@ -740,27 +714,27 @@ class Client(Socket):
 
 
 
-	def pin_chat(self, chatId: str, pin: bool = True) -> dict:
+	def pin_chat(self, chatId: str, pin: bool = True) -> DynamicObject:
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/{'pin' if pin else 'unpin'}", {})
 
 
-	def set_chat_background(self, chatId: str, backgroundImage: BinaryIO) -> dict:
+	def set_chat_background(self, chatId: str, backgroundImage: BinaryIO) -> DynamicObject:
 		data = {
 			"media": [100, self.req.upload_media(backgroundImage).mediaValue, None]
 		}
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/member/{self.userId}/background", data)
 	
-	def add_co_hosts(self, chatId: str, coHosts: list) -> dict:
+	def add_co_hosts(self, chatId: str, coHosts: list) -> DynamicObject:
 		data = {
 			"uidList": coHosts
 		}
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/co-host", data)
 
-	def chat_view_only(self, chatId: str, viewOnly: bool = False) -> dict:
+	def chat_view_only(self, chatId: str, viewOnly: bool = False) -> DynamicObject:
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}")
 	
-	def member_can_invite_to_chat(self, chatId: str, canInvite: bool = True) -> dict:
+	def member_can_invite_to_chat(self, chatId: str, canInvite: bool = True) -> DynamicObject:
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}")
 
-	def member_can_chat_tip(self, chatId: str, canTip: bool = True) -> dict:
+	def member_can_chat_tip(self, chatId: str, canTip: bool = True) -> DynamicObject:
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}")
