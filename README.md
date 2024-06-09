@@ -46,14 +46,17 @@ print(f"LOGIN: OK.")
 
 @client.event(amino.arguments.wsEvent.on_text_message)
 def text_msg(data: amino.objects.Event):
-    if data.comId is None or data.message.author.userId == client.userId: return
+    if data.comId is None or data.message.author.uid == client.userId: return
     print(f"New message: {data.message.content}")
+    try:
+        com_client = amino.CommunityClient(client.profile, data.comId)
+        if data.message.content.lower().split(" ")[0] == "ping":
+            com_client.send_message(data.message.threadId, "Pong!", replyTo=data.message.messageId)
+        elif data.message.content.lower().split(" ")[0] == "pong":
+            com_client.send_message(data.message.threadId, "Ping!", replyTo=data.message.messageId)
+    except Exception as e:
+        print(e)
 
-    com_client = amino.CommunityClient(client.profile, data.comId)
-    if data.message.content.lower().split(" ")[0] == "ping":
-        com_client.send_message(data.message.chatId, "Pong!", replyTo=data.message.messageId)
-    elif data.message.content.lower().split(" ")[0] == "pong":
-        com_client.send_message(data.message.chatId, "Ping!", replyTo=data.message.messageId)
 
 ```
 
