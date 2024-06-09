@@ -1,4 +1,4 @@
-from ..requestObjects.message import Message
+from ..reqObjects import DynamicObject
 
 class Event:
 	__slots__ = (
@@ -20,4 +20,4 @@ class Event:
 		self.threadType = params.get("threadType")
 		self.duration = params.get("duration")
 		self.id = data.get("id")
-		self.message = Message(data.get("chatMessage", {}))
+		self.message = DynamicObject(data.get("chatMessage", {}))

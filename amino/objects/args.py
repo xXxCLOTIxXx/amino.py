@@ -9,3 +9,4 @@ from .argObjects.administrators_rank import AdministratorsRank
 from .argObjects.vc_join_permissions import VoiceChatJoinPermissions
 from .argObjects.users_types import UsersTypes
 from .argObjects.leaderboard_types import LeaderboardTypes
+from .argObjects.message_type import MessageTypes

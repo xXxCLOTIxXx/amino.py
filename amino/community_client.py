@@ -6,14 +6,14 @@ from .helpers.exceptions import SpecifyType, WrongType
 from .objects.args import (
 	RepairMethod, CommunityModules, UsersTypes,
 	AdministratorsRank, VoiceChatJoinPermissions,
-	LeaderboardTypes, Sorting
+	LeaderboardTypes, Sorting, UploadType, MessageTypes
 )
-
+from .objects.dynamic_object import DynamicObject
 
 from typing import Union, BinaryIO
 from uuid import uuid4
-from time import time as timestamp
 from base64 import b64encode
+from mimetypes import guess_type
 
 class CommunityClient:
 	req: requestsBuilder
@@ -45,7 +45,7 @@ class CommunityClient:
 
 
 
-	def check_in(self, tz: int = None) -> dict:
+	def check_in(self, tz: int = None) -> DynamicObject:
 		return self.req.request("POST", f"/x{self.comId}/s/check-in", { "timezone": tz if tz else timezone()})
 
 
@@ -69,11 +69,11 @@ class CommunityClient:
 
 		if captionList is not None:
 			for image, caption in zip(imageList, captionList):
-				mediaList.append([100, self.req.upload_media(image), caption])
+				mediaList.append([100, self.req.upload_media(image).mediaValue, caption])
 		else:
 			if imageList is not None:
 				for image in imageList:
-					mediaList.append([100, self.req.upload_media(image), None])
+					mediaList.append([100, self.req.upload_media(image).mediaValue, None])
 		
 		data = {
 			"address": None,
@@ -122,7 +122,7 @@ class CommunityClient:
 		mediaList = []
 
 		for image in imageList:
-			mediaList.append([100, self.req.upload_media(image), None])
+			mediaList.append([100, self.req.upload_media(image).mediaValue, None])
 
 		data = {
 			"address": None,
@@ -166,7 +166,7 @@ class CommunityClient:
 		return self.req.request("POST", f"/x{self.comId}/s/check-in/repair", data)
 
 
-	def check_in(self, tz: int = None) -> dict:
+	def check_in(self, tz: int = None) -> DynamicObject:
 		return self.req.request("POST", f"/x{self.comId}/s/check-in", { "timezone": tz if tz else timezone()})
 
 
@@ -178,15 +178,15 @@ class CommunityClient:
 		data = {}
 		if captionList is not None:
 			for image, caption in zip(imageList, captionList):
-				mediaList.append([100, self.req.upload_media(image), caption])
+				mediaList.append([100, self.req.upload_media(image).mediaValue, caption])
 		else:
 			if imageList is not None:
 				for image in imageList:
-					mediaList.append([100, self.req.upload_media(image), None])
+					mediaList.append([100, self.req.upload_media(image).mediaValue, None])
 
 		if imageList is not None or captionList is not None:data["mediaList"] = mediaList
 		if nickname:data["nickname"] = nickname
-		if icon:data["icon"] = self.req.upload_media(icon)
+		if icon:data["icon"] = self.req.upload_media(icon).mediaValue
 		if content:data["content"] = content
 		if chatRequestPrivilege:data["extensions"] = {"privilegeOfChatInviteRequest": chatRequestPrivilege}
 		if backgroundImage:
@@ -445,7 +445,7 @@ class CommunityClient:
 
 		return self.req.request("POST",  f"/x{self.comId}/s/{'g-flag' if asGuest else 'flag'}", data)
 
-	def send_message(self, chatId: str, message: str = None, messageType: int = 0, file: BinaryIO = None, fileType: str = None, replyTo: str = None, mentionUserIds: list = None, stickerId: str = None, embedId: str = None, embedType: int = None, embedLink: str = None, embedTitle: str = None, embedContent: str = None, embedImage: BinaryIO = None):
+	def send_message(self, chatId: str, message: str = None, messageType: int = MessageTypes.Text, file: BinaryIO = None, replyTo: str = None, mentionUserIds: list = None, stickerId: str = None, embedId: str = None, embedType: int = None, embedLink: str = None, embedTitle: str = None, embedContent: str = None, embedImage: BinaryIO = None):
 		data = {
 			"type": messageType,
 			"content": message
@@ -457,7 +457,7 @@ class CommunityClient:
 			if embedLink:attachedObject["link"] = embedLink
 			if embedTitle:attachedObject["title"] = embedTitle
 			if embedContent:attachedObject["content"] = embedContent
-			if embedImage:attachedObject["mediaList"] = [[100, self.req.upload_media(embedImage), None]]
+			if embedImage:attachedObject["mediaList"] = [[100, self.req.upload_media(embedImage).mediaValue, None]]
 			data["attachedObject"] = attachedObject
 		if mentionUserIds:
 			mentions = [{"uid": mention_uid} for mention_uid in mentionUserIds]
@@ -466,23 +466,23 @@ class CommunityClient:
 		if stickerId:
 			data["content"] = None
 			data["stickerId"] = stickerId
-			data["type"] = 3
+			data["type"] = MessageTypes.Sticker
 		if file:
 			data["content"] = None
-
-			if fileType == "audio":
-				data["type"] = 2
+			fileType = guess_type(file.name)[0]
+			if fileType == UploadType.audio:
+				data["type"] =  MessageTypes.Voice
 				data["mediaType"] = 110
 				data["mediaUploadValue"] = b64encode(file.read()).decode()
 			else:
-				url = self.req.upload_media(file)
+				url = self.req.upload_media(file).mediaValue
 				data["mediaValue"] = url
 		return self.req.request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}/message", data)
 
 	def send_full_embed(self, link: str, image: BinaryIO, message: str, chatId: str):
-		url = self.req.upload_media(image)
+		url = self.req.upload_media(image).mediaValue
 		data = {
-			"type": 0,
+			"type": MessageTypes.Text,
 			"content": message,
 			"extensions": {
 				"linkSnippetList": [{
@@ -523,35 +523,40 @@ class CommunityClient:
 
 		return self.req.request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}", data)
 
-	def do_not_disturb(self, chatId: str, doNotDisturb: bool = True) -> dict:
+	def do_not_disturb(self, chatId: str, doNotDisturb: bool = True) -> DynamicObject:
 		data = {
 			"alertOption": 2 if doNotDisturb else 1,
 		}
 		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.userId}/alert", data)
 
-	def pin_chat(self, chatId: str, pin: bool = True) -> dict:
+	def pin_chat(self, chatId: str, pin: bool = True) -> DynamicObject:
 		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}{'pin' if pin else 'unpin'}", {})
 
 
-	def set_chat_background(self, chatId: str, backgroundImage: BinaryIO) -> dict:
+	def set_chat_background(self, chatId: str, backgroundImage: BinaryIO) -> DynamicObject:
 		data = {
 			"media": [100, self.req.upload_media(backgroundImage).mediaValue, None]
 		}
 		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.userId}/background", data)
 	
-	def add_co_hosts(self, chatId: str, coHosts: list) -> dict:
+	def add_co_hosts(self, chatId: str, coHosts: list) -> DynamicObject:
 		data = {
 			"uidList": coHosts
 		}
 		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/co-host", data)
 
-	def chat_view_only(self, chatId: str, viewOnly: bool = False) -> dict:
+
+	def delete_co_host(self, chatId: str, userId: str) -> DynamicObject:
+		return self.req.request("DELETE", f"/x{self.comId}/chat/thread/{chatId}/co-host/{userId}")
+
+
+	def chat_view_only(self, chatId: str, viewOnly: bool = False) -> DynamicObject:
 		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}")
 	
-	def member_can_invite_to_chat(self, chatId: str, canInvite: bool = True) -> dict:
+	def member_can_invite_to_chat(self, chatId: str, canInvite: bool = True) -> DynamicObject:
 		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}")
 
-	def member_can_chat_tip(self, chatId: str, canTip: bool = True) -> dict:
+	def member_can_chat_tip(self, chatId: str, canTip: bool = True) -> DynamicObject:
 		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}")
 
 	def transfer_host(self, chatId: str, userIds: list):
@@ -1117,7 +1122,7 @@ class CommunityClient:
 			"icon": {
 				"height": 512.0,
 				"imageMatrix": [1.6875, 0.0, 108.0, 0.0, 1.6875, 497.0, 0.0, 0.0, 1.0],
-				"path": self.req.upload_media(icon),
+				"path": self.req.upload_media(icon).mediaValue,
 				"width": 512.0,
 				"x": 0.0,
 				"y": 0.0
@@ -1204,7 +1209,6 @@ class CommunityClient:
 		data = {
 			"path": "general.invitePermission",
 			"value": 2 if onlyAdmins is True else 1,
-			"timestamp": int(timestamp() * 1000),
 			"action": "set"
 		}
 		return self.req.request("POST", f"/x{self.comId}/s/community/configuration", data)
@@ -1213,7 +1217,6 @@ class CommunityClient:
 	def change_community_aminoId(self, aminoId: str):
 		data = {
 			"endpoint": aminoId,
-			"timestamp": int(timestamp()*1000)
 		}
 		return self.req.request("POST", f"/x{self.comId}/s/community/settings", data)
 
@@ -1224,7 +1227,7 @@ class CommunityClient:
 
 	def edit_community(self, name: str = None, description: str = None, aminoId: str = None, primaryLanguage: str = None, themePackUrl: str = None):
 
-		data = {"timestamp": int(timestamp() * 1000)}
+		data = {}
 
 		if name is not None:
 			data["name"] = name

@@ -3,7 +3,7 @@ from .helpers.requests_builder import AsyncRequestsBuilder
 from .helpers.generator import generate_deviceId, sid_to_uid
 from .helpers.exceptions import SpecifyType
 from .ws.AsyncSocket import AsyncSocket
-from .objects.reqObjects import UserProfile
+from .objects.reqObjects import DynamicObject
 
 
 from time import time as timestamp
@@ -44,7 +44,7 @@ class AsyncClient(AsyncSocket):
 
 
 
-	async  def login(self, email: str, password: str = None, secret: str = None) -> UserProfile:
+	async  def login(self, email: str, password: str = None, secret: str = None) -> DynamicObject:
 		if password is None and secret is None: raise SpecifyType
 		result = await self.req.request("POST", "/g/s/auth/login", {
 			"email": email,
@@ -53,16 +53,15 @@ class AsyncClient(AsyncSocket):
 			"deviceID": self.deviceId,
 			"clientType": 100,
 			"action": "normal",
-			"timestamp": int(timestamp() * 1000)
 		})
 		self.req.profile.sid, self.req.profile.uid = result["sid"], result["auid"]
 		if self.socket_enable:
 			final = f"{self.deviceId}|{int(timestamp() * 1000)}"
 			await self.ws_connect(final=final, headers=self.ws_headers(self.sid, final, self.deviceId))
-		return UserProfile(result["userProfile"])
+		return result["userProfile"]
 
 
-	async def login_phone(self, phone: str, password: str = None, secret: str = None) -> UserProfile:
+	async def login_phone(self, phone: str, password: str = None, secret: str = None) -> DynamicObject:
 		if password is None and secret is None: raise SpecifyType
 		result = await self.req.request("POST", "/g/s/auth/login", {
 			"phoneNumber": phone,
@@ -71,13 +70,12 @@ class AsyncClient(AsyncSocket):
 			"deviceID": self.deviceId,
 			"clientType": 100,
 			"action": "normal",
-			"timestamp": int(timestamp() * 1000)
 		})
 		self.req.profile.sid, self.req.profile.uid = result["sid"], result["auid"]
 		if self.socket_enable:
 			final = f"{self.deviceId}|{int(timestamp() * 1000)}"
 			await self.ws_connect(final=final, headers=self.ws_headers(self.sid, final, self.deviceId))
-		return UserProfile(result["userProfile"])
+		return result["userProfile"]
 
 	
 	async def login_sid(self, sid: str) -> auth_data:
@@ -89,11 +87,10 @@ class AsyncClient(AsyncSocket):
 
 
 
-	async def logout(self) -> dict:
+	async def logout(self) -> DynamicObject:
 		result = await self.req.request("POST", "/g/s/auth/logout", {
 			"deviceID": self.profile.deviceId,
 			"clientType": 100,
-			"timestamp": int(timestamp() * 1000)
 		})
 		self.req.profile.sid, self.req.profile.uid = None, None
 		if self.socket_enable:await self.ws_disconnect()
