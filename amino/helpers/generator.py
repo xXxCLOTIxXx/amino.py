@@ -14,17 +14,31 @@ from ..objects.constants import (
 
 
 def signature(data: Union[str, bytes]):
+	"""
+		signature generator based on request data
+
+		args:
+		
+		- data: str or bytes
+	"""
 	data = data if isinstance(data, bytes) else data.encode("utf-8")
 	return b64encode(PREFIX + new(SIG_KEY, data, sha1).digest()).decode("utf-8")
 
 
 def generate_deviceId():
+	"""
+		device id generator
+	"""
 	ur = PREFIX + (urandom(20))
 	mac = new(DEVICE_KEY, ur, sha1)
 	return f"{ur.hex()}{mac.hexdigest()}".upper()
 
 
 def generate_user_agent():
+	"""
+	device user agent generator
+	"""
+
 	imodel = randint(6, 15)
 	if imodel == 9:imodel=8
 	return f"Apple iPhone{imodel},{randint(1,3)} iOS v15.5 Main/3.12.2"
@@ -33,6 +47,10 @@ def generate_user_agent():
 
 
 def timezone():
+	"""
+	time zone generator
+	"""
+
 	localhour = strftime("%H", gmtime())
 	localminute = strftime("%M", gmtime())
 	UTC = {
@@ -77,12 +95,47 @@ def timers():
 			} for _ in range(50)
 		]
 
-def decode_sid(SID: str):return loads(urlsafe_b64decode(SID + "=" * (4 - len(SID) % 4))[1:-20])
+def decode_sid(SID: str):
+	"""
+	get data from authorization seed
+		args:
+		
+		- sid: str
+	"""
+	return loads(urlsafe_b64decode(SID + "=" * (4 - len(SID) % 4))[1:-20])
 
-def sid_to_uid(SID: str): return decode_sid(SID)["2"]
+def sid_to_uid(SID: str):
+	"""
+	get an ID account from the authorization seed
+		args:
+		
+		- sid: str
+	"""
+	return decode_sid(SID)["2"]
 
-def sid_to_ip_address(SID: str): return decode_sid(SID)["4"]
+def sid_to_ip_address(SID: str):
+	"""
+	get an ip address from the authorization seed
+		args:
+		
+		- sid: str
+	"""
+	return decode_sid(SID)["4"]
 
-def sid_created_time(SID: str): return decode_sid(SID)["5"]
+def sid_created_time(SID: str):
+	"""
+	get created time from the authorization seed
+		args:
+		
+		- sid: str
+	"""
+	return decode_sid(SID)["5"]
 
-def sid_to_client_type(SID: str): return decode_sid(SID)["6"]
+def sid_to_client_type(SID: str):
+	"""
+	get client type from the authorization seed
+		args:
+		
+		- sid: str
+	"""
+	return decode_sid(SID)["6"]

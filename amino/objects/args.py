@@ -1,3 +1,6 @@
+"""
+objects that are used for conveniently passing magic arguments to functions, etc.
+"""
 
 from .argObjects.gender import Gender
 from .argObjects.sorting import Sorting
@@ -10,3 +13,4 @@ from .argObjects.vc_join_permissions import VoiceChatJoinPermissions
 from .argObjects.users_types import UsersTypes
 from .argObjects.leaderboard_types import LeaderboardTypes
 from .argObjects.message_type import MessageTypes
+from .argObjects.purchase_types import PurchaseTypes

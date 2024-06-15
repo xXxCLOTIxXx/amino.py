@@ -1,6 +1,19 @@
 class Sorting:
-    Newest: str = "newest"
-    Oldest: str = "oldest"
-    Top: str = "vote"
+	"""
+	sorting for functions
 
-    all: list = [Newest, Oldest, Top]
+	attributes:
+	
+	- Newest
+	- Oldest
+	- Top
+
+	- all (list of all attributes)
+
+	"""
+	  
+	Newest: str = "newest"
+	Oldest: str = "oldest"
+	Top: str = "vote"
+
+	all: list = [Newest, Oldest, Top]

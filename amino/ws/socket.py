@@ -22,17 +22,33 @@ from ..objects.reqObjects import Event
 
 
 class EventHandler:
+	"""
+		class for handling socket events
+	"""
+
 	handlers = {}
 
 	def event(self, type):
+		"""
+		Add event handler
+
+		@client.event(type=amino.arguments.wsEvent.on_text_message)
+		"""
+
 		def registerHandler(handler):
 			if type in self.handlers:self.handlers[type].append(handler)
 			else:self.handlers[type] = [handler]
 			return handler
 
 		return registerHandler
-
+	
 	def on_message(self):
+		"""
+			add an event handler when receiving a new event in chat
+			
+			@client.on_message()
+		"""
+
 		def registerHandler(handler):
 			if "chat_message" in self.handlers:self.handlers["chat_message"].append(handler)
 			else:self.handlers["chat_message"] = [handler]
@@ -72,7 +88,9 @@ class EventHandler:
 
 
 class WsRequester:
-
+	"""
+	class with socket requests
+	"""
 	def create_socket_event(self, data):
 		return self.ws_resolve(None, data)
 
@@ -147,6 +165,10 @@ class WsRequester:
 
 
 class Socket(EventHandler, WsRequester):
+	"""
+		Socket class for amino. used in the client
+	"""
+
 	active: bool = False
 	debug: bool = False
 	socket = None
@@ -160,6 +182,10 @@ class Socket(EventHandler, WsRequester):
 		if self.debug:print(f"[Socket]{message}")
 
 	def ws_connect(self, headers: dict, final: str):
+		"""
+			connect to amino sockets
+		"""
+		
 		if self.socket or self.active:
 			self.socket_log(f"[start] The socket is already running.")
 			return
@@ -182,6 +208,10 @@ class Socket(EventHandler, WsRequester):
 
 
 	def ws_disconnect(self):
+		"""
+			disconnect from amino sockets
+		"""
+
 		if self.socket or self.active:
 			self.socket_log(f"[stop] closing socket...")
 			try:
@@ -193,6 +223,10 @@ class Socket(EventHandler, WsRequester):
 			self.socket_log(f"[stop] Socket not running.")
 
 	def ws_send(self, req_t: int, **kwargs):
+		"""
+			send data to amino socket
+		"""
+
 		if not self.active:raise SocketNotStarted
 		data = dumps(dict(t=req_t, **kwargs))
 		self.socket_log(f"[send] Sending Data : {data}")
@@ -229,51 +263,3 @@ class Socket(EventHandler, WsRequester):
 					"NDCAUTH": f"sid={sid}",
 					"NDC-MSG-SIG": signature(final)
 				}
-
-
-
-
-class Callbacks:
-	def __init__(self):
-		self.handlers = {}
-
-	def event(self, type):
-		def registerHandler(handler):
-			if type in self.handlers:self.handlers[type].append(handler)
-			else:self.handlers[type] = [handler]
-			return handler
-
-		return registerHandler
-
-	def on_message(self):
-		def registerHandler(handler):
-			if "chat_message" in self.handlers:self.handlers["chat_message"].append(handler)
-			else:self.handlers["chat_message"] = [handler]
-			return handler
-
-		return registerHandler
-
-	def call(self, data):
-		data_object = data["o"]
-		method = ws_message_methods.get(data["t"])
-		if method in ("chat_action_start", "chat_action_end") :
-			key = data['o'].get('actions', 0)
-			ws_event = ws_chat_action_start.get(key) if method == "chat_action_start" else ws_chat_action_end.get(key)
-		elif method == "chat_message":
-			key = f"{data['o']['chatMessage']['type']}:{data['o']['chatMessage'].get('mediaType', 0)}"
-			ws_event = ws_message_types.get(key)
-		elif method == "notification":
-			key = data["o"]["payload"]["notifType"]
-			ws_event = notification_types.get(key)
-		else:ws_event=None
-		
-		if "on_ws_message" in self.handlers.keys():
-			for func in self.handlers["on_ws_message"]:
-				func(data_object)
-		if method in self.handlers.keys():
-			for func in self.handlers[method]:
-				func(data_object)
-		if ws_event:
-			if ws_event in self.handlers.keys():
-				for func in self.handlers[ws_event]:
-					func(data_object)

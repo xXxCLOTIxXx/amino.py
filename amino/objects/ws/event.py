@@ -1,6 +1,10 @@
 from ..reqObjects import DynamicObject
 
 class Event:
+	"""
+		class with data about a new event
+		
+	"""
 	__slots__ = (
 		"data", "comId", "alertOption", "membershipStatus",
 		"actions", "target", "params", "threadType", "duration",

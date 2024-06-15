@@ -1,8 +1,23 @@
 class UsersTypes:
-    Recent: str = "recent"
-    Banned: str = "banned"
-    Featured: str = "featured"
-    Leaders: str = "leaders"
-    Curators: str = "curators"
+	"""
+	user sorting type
 
-    all: tuple = (Recent, Banned, Featured, Leaders, Curators)
+	attributes:
+	
+	- Recent
+	- Banned
+	- Featured
+	- Leaders
+	- Curators
+	
+	- all (list of all attributes)
+
+	"""
+	  
+	Recent: str = "recent"
+	Banned: str = "banned"
+	Featured: str = "featured"
+	Leaders: str = "leaders"
+	Curators: str = "curators"
+
+	all: tuple = (Recent, Banned, Featured, Leaders, Curators)

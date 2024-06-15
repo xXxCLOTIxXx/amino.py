@@ -6,7 +6,8 @@ from .helpers.exceptions import SpecifyType, WrongType
 from .objects.args import (
 	RepairMethod, CommunityModules, UsersTypes,
 	AdministratorsRank, VoiceChatJoinPermissions,
-	LeaderboardTypes, Sorting, UploadType, MessageTypes
+	LeaderboardTypes, Sorting, UploadType, MessageTypes,
+	PurchaseTypes
 )
 from .objects.dynamic_object import DynamicObject
 
@@ -16,6 +17,20 @@ from base64 import b64encode
 from mimetypes import guess_type
 
 class CommunityClient:
+	"""
+		Class for working with amino in community and ACM [https://aminoapps.com/]
+		Arguments for the class:
+		
+		- profile: auth_data
+			- account login details (client.profile)
+		
+		- comId: int
+			- ID of the community in which the functions will be performed. can be taken in client functions or at a socket event
+			
+		- proxies: dict = None
+			- dictionary with proxy
+	"""
+
 	req: requestsBuilder
 	comId: str
 	
@@ -1030,7 +1045,7 @@ class CommunityClient:
 		return self.req.request("GET", f"/x{self.comId}/s/feed/quiz-best-quizzes?start={start}&size={size}")["blogList"]
 
 
-	def purchase(self, objectId: str, objectType: int, aminoPlus: bool = True, autoRenew: bool = False):
+	def purchase(self, objectId: str, objectType: int = PurchaseTypes.Bubble, aminoPlus: bool = True, autoRenew: bool = False):
 		data = {
 			"objectId": objectId,
 			"objectType": objectType,

@@ -5,7 +5,10 @@ from .helpers.exceptions import SpecifyType, WrongType, UnsupportedLanguage
 from .ws.socket import Socket
 from .objects.reqObjects import DynamicObject
 
-from .objects.args import Gender, UploadType, Sorting, MessageTypes
+from .objects.args import (
+	Gender, UploadType, Sorting, 
+	MessageTypes, PurchaseTypes
+)
 
 from time import time
 from typing import Union, BinaryIO
@@ -15,6 +18,35 @@ from mimetypes import guess_type
 
 
 class Client(Socket):
+	"""
+		Class for working with amino global functions [https://aminoapps.com/]
+		Arguments for the class:
+
+		
+		- deviceId: str = None
+			-  Device ID. Is generated automatically, but you can specify your own
+			- amino.generate_deviceId()
+
+		- language: str = "en"
+			- The language in which amino servers will respond.
+		
+		- user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2"
+			- device user agent that will see the amino server
+		
+		- proxies: dict = None
+			- dictionary with proxy
+		
+		- socket_enable: bool = True
+			- whether the socket will be launched when logging into your account
+			- the socket is used to receive new messages in chats
+		
+		- sock_trace: bool = False
+			- Monitor socket connection
+
+		- sock_debug: bool = False
+			- output debug messages in the socket class to the console
+	"""
+	
 	req: requestsBuilder
 	socket_enable = True
 
@@ -652,10 +684,10 @@ class Client(Socket):
 		return self.req.request("POST", f"/g/s/wallet/ads/config", data=data)
 
 
-	def purchase(self, objectId: str, isAutoRenew: bool = False):
+	def purchase(self, objectId: str, objectType: int = PurchaseTypes.Bubble, isAutoRenew: bool = False):
 		data = {
 			"objectId": objectId,
-			"objectType": 114,
+			"objectType": objectType,
 			"v": 1,
 			"paymentContext":
 			{

@@ -1,6 +1,19 @@
 class VoiceChatJoinPermissions:
-    Open: int = 1
-    ApprovalRequired: int = 2
-    InviteOnly: int = 3
+	"""
+	types of voice chat access
 
-    all: tuple = (Open, ApprovalRequired, InviteOnly)
+	attributes:
+	
+	- Open
+	- ApprovalRequired
+	- InviteOnly
+	
+	- all (list of all attributes)
+
+	"""
+	  
+	Open: int = 1
+	ApprovalRequired: int = 2
+	InviteOnly: int = 3
+
+	all: tuple = (Open, ApprovalRequired, InviteOnly)
