@@ -13,7 +13,7 @@ from ..objects.constants import (
 )
 
 
-def signature(data: Union[str, bytes]):
+def signature(data: str | bytes) -> str:
 	"""
 		signature generator based on request data
 
@@ -25,7 +25,7 @@ def signature(data: Union[str, bytes]):
 	return b64encode(PREFIX + new(SIG_KEY, data, sha1).digest()).decode("utf-8")
 
 
-def generate_deviceId():
+def generate_deviceId() -> str:
 	"""
 		device id generator
 	"""
@@ -34,7 +34,7 @@ def generate_deviceId():
 	return f"{ur.hex()}{mac.hexdigest()}".upper()
 
 
-def generate_user_agent():
+def generate_user_agent() -> str:
 	"""
 	device user agent generator
 	"""
@@ -46,7 +46,7 @@ def generate_user_agent():
 
 
 
-def timezone():
+def timezone() -> int:
 	"""
 	time zone generator
 	"""
@@ -88,14 +88,14 @@ def timezone():
 
 
 
-def timers():
+def timers() -> list:
 	return [
 			{
 				'start': int(timestamp()), 'end': int(timestamp()) + 300
 			} for _ in range(50)
 		]
 
-def decode_sid(SID: str):
+def decode_sid(SID: str) -> dict:
 	"""
 	get data from authorization seed
 		args:
@@ -104,7 +104,7 @@ def decode_sid(SID: str):
 	"""
 	return loads(urlsafe_b64decode(SID + "=" * (4 - len(SID) % 4))[1:-20])
 
-def sid_to_uid(SID: str):
+def sid_to_uid(SID: str) -> str:
 	"""
 	get an ID account from the authorization seed
 		args:
@@ -113,7 +113,7 @@ def sid_to_uid(SID: str):
 	"""
 	return decode_sid(SID)["2"]
 
-def sid_to_ip_address(SID: str):
+def sid_to_ip_address(SID: str) -> str:
 	"""
 	get an ip address from the authorization seed
 		args:
@@ -122,7 +122,7 @@ def sid_to_ip_address(SID: str):
 	"""
 	return decode_sid(SID)["4"]
 
-def sid_created_time(SID: str):
+def sid_created_time(SID: str) -> int:
 	"""
 	get created time from the authorization seed
 		args:
@@ -131,7 +131,7 @@ def sid_created_time(SID: str):
 	"""
 	return decode_sid(SID)["5"]
 
-def sid_to_client_type(SID: str):
+def sid_to_client_type(SID: str) -> int:
 	"""
 	get client type from the authorization seed
 		args:

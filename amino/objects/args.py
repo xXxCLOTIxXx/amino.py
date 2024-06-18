@@ -14,3 +14,4 @@ from .argObjects.users_types import UsersTypes
 from .argObjects.leaderboard_types import LeaderboardTypes
 from .argObjects.message_type import MessageTypes
 from .argObjects.purchase_types import PurchaseTypes
+from .argObjects.client_types import ClientTypes
