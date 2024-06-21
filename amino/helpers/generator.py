@@ -1,4 +1,5 @@
-from typing import Union
+from __future__ import annotations
+
 from hmac import new
 from hashlib import sha1
 from base64 import b64encode, urlsafe_b64decode
@@ -6,12 +7,14 @@ from json import loads
 from os import urandom
 from time import time as timestamp
 from time import strftime, gmtime
-from random import randint
+from random import randint, choice
 
 from ..objects.constants import (
 	PREFIX, SIG_KEY, DEVICE_KEY
 )
 
+
+def clientrefid() -> int: return int(timestamp() / 10 % 1000000000)
 
 def signature(data: str | bytes) -> str:
 	"""
@@ -36,12 +39,26 @@ def generate_deviceId() -> str:
 
 def generate_user_agent() -> str:
 	"""
-	device user agent generator
+	iphone user agent generator
 	"""
 
-	imodel = randint(6, 15)
-	if imodel == 9:imodel=8
-	return f"Apple iPhone{imodel},{randint(1,3)} iOS v15.5 Main/3.12.2"
+	models = [
+		'iPhone6,1', 'iPhone6,2', 'iPhone7,1', 'iPhone7,2', 'iPhone8,1', 'iPhone8,2', 
+		'iPhone9,1', 'iPhone9,2', 'iPhone10,1', 'iPhone10,2', 'iPhone11,2', 'iPhone11,4', 
+		'iPhone11,6', 'iPhone12,1', 'iPhone12,3', 'iPhone12,5', 'iPhone13,1', 'iPhone13,2', 
+		'iPhone13,3', 'iPhone13,4', 'iPhone14,2', 'iPhone14,3', 'iPhone14,4', 'iPhone14,5'
+	]
+	ios_versions = [
+		'14.0', '14.1', '14.2', '14.3', '14.4', '14.5', '14.6', '14.7', '14.8', '15.0', 
+		'15.1', '15.2', '15.3', '15.4', '15.5', '15.6', '15.7', '15.8', '16.0', '16.1', 
+		'16.2', '16.3', '16.4', '16.5'
+	]
+
+	app_version = f"{randint(1, 5)}.{randint(0, 9)}.{randint(0, 9)}"
+	model = choice(models)
+	ios_version = choice(ios_versions)
+	
+	return f"Apple {model} iOS v{ios_version} Main/{app_version}"
 
 
 
@@ -88,7 +105,10 @@ def timezone() -> int:
 
 
 
-def timers() -> list:
+def timers() -> list[dict]:
+	"""
+		generate timers for send_active_object (in CommunityClient)
+	"""
 	return [
 			{
 				'start': int(timestamp()), 'end': int(timestamp()) + 300

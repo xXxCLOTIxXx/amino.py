@@ -1,7 +1,7 @@
 """
 objects that are used for conveniently passing magic arguments to functions, etc.
 """
-
+from .argObjects.promotion_types import PromotionTypes
 from .argObjects.gender import Gender
 from .argObjects.sorting import Sorting
 from .argObjects.upload_type import UploadType
@@ -15,3 +15,5 @@ from .argObjects.leaderboard_types import LeaderboardTypes
 from .argObjects.message_type import MessageTypes
 from .argObjects.purchase_types import PurchaseTypes
 from .argObjects.client_types import ClientTypes
+from .argObjects.embed_types import EmbedTypes, AttachedObjectTypes
+from .argObjects.qmode import QuizMode

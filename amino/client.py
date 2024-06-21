@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 from .objects.auth_data import auth_data
 from .helpers.requests_builder import requestsBuilder
 from .helpers.generator import generate_deviceId, sid_to_uid, timezone
 from .helpers.exceptions import SpecifyType, WrongType, UnsupportedLanguage
 from .ws.socket import Socket
-from .objects.reqObjects import DynamicObject
 
 from .objects.args import (
 	Gender, UploadType, Sorting, 
@@ -51,7 +52,7 @@ class Client(Socket):
 	req: requestsBuilder
 	socket_enable = True
 
-	def __init__(self, deviceId: str = None, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", proxies: dict = None, socket_enable: bool = True, sock_trace: bool = False, sock_debug: bool = False):
+	def __init__(self, deviceId: str | None = None, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", proxies: dict | None = None, socket_enable: bool = True, sock_trace: bool = False, sock_debug: bool = False):
 		self.req = requestsBuilder(
 			proxies=proxies,
 			profile=auth_data(
@@ -69,29 +70,29 @@ class Client(Socket):
 
 	
 	@property
-	def profile(self):
+	def profile(self) -> auth_data:
 		return self.req.profile
 	
 	@property
-	def userId(self):
+	def userId(self) -> str:
 		return self.req.profile.uid
 
 	@property
-	def sid(self):
+	def sid(self) -> str:
 		return self.req.profile.sid
 
 	@property
-	def deviceId(self):
+	def deviceId(self) -> str:
 		return self.req.profile.deviceId
 	
 
 	@property
-	def language(self):
+	def language(self) -> str:
 		return self.req.profile.language
 
 
 
-	def login(self, email: str, password: str | None = None, secret: str | None = None, client_type: int = ClientTypes.User) -> DynamicObject:
+	def login(self, email: str, password: str | None = None, secret: str | None = None, client_type: int = ClientTypes.User):
 		"""
 		Login into an account.
 
@@ -117,7 +118,7 @@ class Client(Socket):
 		return result["userProfile"]
 
 
-	def login_phone(self, phone: str, password: str | None = None, secret: str | None = None, client_type: int = ClientTypes.User) -> DynamicObject:
+	def login_phone(self, phone: str, password: str | None = None, secret: str | None = None, client_type: int = ClientTypes.User):
 		"""
 		Login into an account.
 
@@ -158,7 +159,7 @@ class Client(Socket):
 
 
 
-	def logout(self) -> DynamicObject:
+	def logout(self):
 		"""
 		Logout from an account.
 		"""
@@ -170,7 +171,7 @@ class Client(Socket):
 		if self.socket_enable:self.ws_disconnect()
 		return result
 
-	def restore_account(self, email: str, password: str) -> DynamicObject:
+	def restore_account(self, email: str, password: str):
 		"""
 		Restore a deleted account.
 
@@ -184,7 +185,7 @@ class Client(Socket):
 			"email": email,
 		})
 	
-	def configure_profile(self, age: int, gender: int = Gender.non_binary) -> DynamicObject:
+	def configure_profile(self, age: int, gender: int = Gender.non_binary):
 		"""
 		Configure the settings of an account.
 
@@ -205,8 +206,6 @@ class Client(Socket):
 		Sets your activity status to offline or online.
 
 		**Parameters**
-
-		Accepting:
 		- status: bool
 			- True: online
 			- False: offline
@@ -220,7 +219,7 @@ class Client(Socket):
 
 
 
-	def verify_account(self, email: str, code: str) -> DynamicObject:
+	def verify_account(self, email: str, code: str):
 		"""
 		Verify an account.
 
@@ -237,7 +236,7 @@ class Client(Socket):
 		})
 
 
-	def request_verify_code(self, email: str, resetPassword: bool = False) -> DynamicObject:
+	def request_verify_code(self, email: str, resetPassword: bool = False):
 		"""
 		Request an verification code to the targeted email.
 
@@ -256,7 +255,7 @@ class Client(Socket):
 			data["purpose"] = "reset-password"
 		return self.req.request("POST", "/g/s/auth/request-security-validation", data)
 
-	def activate_account(self, email: str, code: str) -> DynamicObject:
+	def activate_account(self, email: str, code: str):
 		"""
 		Activate an account.
 
@@ -273,7 +272,7 @@ class Client(Socket):
 		})
 
 
-	def delete_account(self, password: str) -> DynamicObject:
+	def delete_account(self, password: str):
 		"""
 		Delete an account.
 
@@ -286,7 +285,7 @@ class Client(Socket):
 		})
 
 
-	def change_password(self, email: str, password: str, code: str) -> DynamicObject:
+	def change_password(self, email: str, password: str, code: str):
 		"""
 		Change password of an account.
 
@@ -384,7 +383,7 @@ class Client(Socket):
 
 
 
-	def get_eventlog(self) -> DynamicObject:
+	def get_eventlog(self):
 		"""
 		Get eventlog
 		"""
@@ -399,7 +398,7 @@ class Client(Socket):
 		return self.req.request("GET", "/g/s/account")["account"]
 
 
-	def my_communities(self, start: int = 0, size: int = 25) -> DynamicObject:
+	def my_communities(self, start: int = 0, size: int = 25):
 		"""
 		List of Communities the account is in.
 
@@ -410,7 +409,7 @@ class Client(Socket):
 		return self.req.request("GET", f"/g/s/community/joined?v=1&start={start}&size={size}")["communityList"]
 
 
-	def profiles_in_communities(self, start: int = 0, size: int = 25) -> DynamicObject:
+	def profiles_in_communities(self, start: int = 0, size: int = 25):
 		"""
 		Getting your profiles in communities.
 
@@ -430,7 +429,7 @@ class Client(Socket):
 		"""
 		return self.req.request("GET", f"/g/s/user-profile/{userId}")["userProfile"]
 
-	def get_my_chats(self, start: int = 0, size: int = 25) -> DynamicObject:
+	def get_my_chats(self, start: int = 0, size: int = 25):
 		"""
 		List of Chats the account is in.
 
@@ -441,7 +440,7 @@ class Client(Socket):
 		"""
 		return self.req.request("GET", f"/g/s/chat/thread?type=joined-me&start={start}&size={size}")["threadList"]
 
-	def get_chat(self, chatId: str) -> DynamicObject:
+	def get_chat(self, chatId: str):
 		"""
 		Get the Chat Object from an Chat ID.
 
@@ -450,7 +449,7 @@ class Client(Socket):
 		"""
 		return self.req.request("GET", f"/g/s/chat/thread/{chatId}")["thread"]
 
-	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25) -> DynamicObject:
+	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25):
 		"""
 		Getting users in chat.
 
@@ -461,7 +460,7 @@ class Client(Socket):
 		"""
 		return self.req.request("GET", f"/g/s/chat/thread/{chatId}/member?cv=1.2&type=default&start={start}&size={size}")["memberList"]
 
-	def join_chat(self, chatId: str) -> DynamicObject:
+	def join_chat(self, chatId: str):
 		"""
 		Join an Chat.
 
@@ -479,7 +478,7 @@ class Client(Socket):
 		"""
 		return self.req.request("DELETE", f"/g/s/chat/thread/{chatId}/member/{self.userId}")
 
-	def start_chat(self, userId: str | list | tuple, message: str, title: str | None = None, content: str | None = None, isGlobal: bool = False, publishToGlobal: bool = False) -> DynamicObject:
+	def start_chat(self, userId: str | list | tuple, message: str, title: str | None = None, content: str | None = None, isGlobal: bool = False, publishToGlobal: bool = False):
 		"""
 		Start an Chat with an User or List of Users.
 
@@ -505,7 +504,7 @@ class Client(Socket):
 		if isGlobal:data["eventSource"] = "GlobalComposeMenu"
 		return self.req.request("POST", f"/g/s/chat/thread", data=data)["thread"]
 
-	def invite_to_chat(self, userId: str | list, chatId: str) -> DynamicObject:
+	def invite_to_chat(self, userId: str | list, chatId: str):
 		"""
 		Invite a User or List of Users to a Chat.
 
@@ -520,7 +519,7 @@ class Client(Socket):
 		})
 
 
-	def kick(self, userId: str, chatId: str, allowRejoin: bool = True) -> DynamicObject:
+	def kick(self, userId: str, chatId: str, allowRejoin: bool = True):
 		"""
 		Kick/ban user from/in chat.
 
@@ -532,7 +531,7 @@ class Client(Socket):
 		"""
 		return self.req.request("DELETE", f"/g/s/chat/thread/{chatId}/member/{userId}?allowRejoin={int(allowRejoin)}")
 
-	def get_chat_messages(self, chatId: str, size: int = 25, pageToken: str | None = None) -> DynamicObject:
+	def get_chat_messages(self, chatId: str, size: int = 25, pageToken: str | None = None):
 		"""
 		List of Messages from an Chat.
 
@@ -543,7 +542,7 @@ class Client(Socket):
 		"""
 		return self.req.request("GET", f"/g/s/chat/thread/{chatId}/message?pagingType=t&size={size}{f'&pageToken={pageToken}' if pageToken else ''}")
 
-	def get_message_info(self, chatId: str, messageId: str) -> DynamicObject:
+	def get_message_info(self, chatId: str, messageId: str):
 		"""
 		Information of an Message from an Chat.
 
@@ -554,7 +553,7 @@ class Client(Socket):
 		"""
 		return self.req.request("GET", f"/g/s/chat/thread/{chatId}/message/{messageId}")["message"]
 
-	def get_community_info(self, comId: int) -> DynamicObject:
+	def get_community_info(self, comId: int):
 		"""
 		Information of an Community.
 
@@ -563,7 +562,7 @@ class Client(Socket):
 		"""
 		return self.req.request("GET", f"/g/s-x{comId}/community/info?withInfluencerList=1&withTopicList=true&influencerListOrderStrategy=fansCount")["community"]
 
-	def search_community(self, aminoId: str) -> DynamicObject:
+	def search_community(self, aminoId: str):
 		"""
 		Search a Community by Amino ID.
 
@@ -572,7 +571,7 @@ class Client(Socket):
 		"""
 		return self.req.request("GET", f"/g/s/search/amino-id-and-link?q={aminoId}")["resultList"]
 
-	def get_user_following(self, userId: str, start: int = 0, size: int = 25) -> DynamicObject:
+	def get_user_following(self, userId: str, start: int = 0, size: int = 25):
 		"""
 		List of Users that the User is Following.
 
@@ -583,7 +582,7 @@ class Client(Socket):
 		"""
 		return self.req.request("GET", f"/g/s/user-profile/{userId}/joined?start={start}&size={size}")["userProfileList"]
 
-	def get_user_followers(self, userId: str, start: int = 0, size: int = 25) -> DynamicObject:
+	def get_user_followers(self, userId: str, start: int = 0, size: int = 25):
 		"""
 		List of Users that are Following the User.
 
@@ -627,7 +626,7 @@ class Client(Socket):
 		"""
 		return self.req.request("GET", f"/g/s/block?start={start}&size={size}")["userProfileList"]
 
-	def get_blocker_users(self, start: int = 0, size: int = 25) -> DynamicObject:
+	def get_blocker_users(self, start: int = 0, size: int = 25):
 		"""
 		Get a list of users who have blocked you
 
@@ -637,7 +636,7 @@ class Client(Socket):
 		"""
 		return self.req.request("GET", f"/g/s/block/full-list?start={start}&size={size}")["blockerUidList"]
 	
-	def get_blog_info(self, blogId: str | None = None, wikiId: str | None = None, quizId: str | None = None, fileId: str | None = None) -> DynamicObject:
+	def get_blog_info(self, blogId: str | None = None, wikiId: str | None = None, quizId: str | None = None, fileId: str | None = None):
 		"""
 		Getting blog info.
 
@@ -659,7 +658,7 @@ class Client(Socket):
 		raise SpecifyType()
 
 
-	def get_blog_comments(self, blogId: str | None = None, wikiId: str | None = None, quizId: str | None = None, fileId: str | None = None, sorting: str = Sorting.Newest, start: int = 0, size: int = 25) -> DynamicObject:
+	def get_blog_comments(self, blogId: str | None = None, wikiId: str | None = None, quizId: str | None = None, fileId: str | None = None, sorting: str = Sorting.Newest, start: int = 0, size: int = 25):
 		"""
 		Getting blog info.
 
@@ -682,7 +681,7 @@ class Client(Socket):
 		else:raise SpecifyType
 		return self.req.request("GET", f"{url}?sort={sorting}&start={start}&size={size}")["commentList"]
 
-	def get_wall_comments(self, userId: str, sorting: str = Sorting.Newest, start: int = 0, size: int = 25) -> DynamicObject:
+	def get_wall_comments(self, userId: str, sorting: str = Sorting.Newest, start: int = 0, size: int = 25):
 		"""
 		List of Wall Comments of an User.
 
@@ -695,7 +694,7 @@ class Client(Socket):
 		if sorting not in Sorting.all:raise WrongType(sorting)
 		return self.req.request("GET", f"/g/s/user-profile/{userId}/g-comment?sort={sorting}&start={start}&size={size}")["commentList"]
 
-	def flag(self, reason: str, flagType: int, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None, asGuest: bool = False) -> DynamicObject:
+	def flag(self, reason: str, flagType: int, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None, asGuest: bool = False):
 		"""
 		Flag a User, Blog or Wiki.
 
@@ -726,7 +725,7 @@ class Client(Socket):
 
 
 
-	def send_message(self, chatId: str, message: str | None = None, messageType: int = MessageTypes.Text, file: BinaryIO | None = None, replyTo: str | None = None, mentionUserIds: list | None = None, stickerId: str | None = None, embedId: str | None = None, embedType: int | None = None, embedLink: str | None = None, embedTitle: str | None = None, embedContent: str | None = None, embedImage: BinaryIO | None = None) -> DynamicObject:
+	def send_message(self, chatId: str, message: str | None = None, messageType: int = MessageTypes.Text, file: BinaryIO | None = None, replyTo: str | None = None, mentionUserIds: list | None = None, stickerId: str | None = None, embedId: str | None = None, embedType: int | None = None, embedLink: str | None = None, embedTitle: str | None = None, embedContent: str | None = None, embedImage: BinaryIO | None = None):
 		"""
 		Send a Message to a Chat.
 
@@ -792,7 +791,7 @@ class Client(Socket):
 			data["mediaUploadValue"] = b64encode(file.read()).decode()
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/message", data)
 
-	def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str | None = None) -> DynamicObject:
+	def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str | None = None):
 		"""
 		Delete a Message from a Chat.
 
@@ -811,7 +810,7 @@ class Client(Socket):
 		else:return self.req.request("DELETE", f"/g/s/chat/thread/{chatId}/message/{messageId}", data)
 
 
-	def mark_as_read(self, chatId: str, messageId: str) -> DynamicObject:
+	def mark_as_read(self, chatId: str, messageId: str):
 		"""
 		Mark a Message from a Chat as Read.
 
@@ -1288,7 +1287,7 @@ class Client(Socket):
 		return self.req.request("GET", f"/g/s/community-collection/supported-languages?start=0&size=100")["supportedLanguages"]
 
 
-	def claim_coupon(self) -> DynamicObject:
+	def claim_coupon(self):
 		"""
 		Claim the New User Coupon available when a new account is created.
 		"""
@@ -1305,7 +1304,7 @@ class Client(Socket):
 		"""
 		return self.req.request("GET", f"/g/s/store/subscription?objectType=122&start={start}&size={size}")["storeSubscriptionItemList"]
 
-	def get_all_users(self, start: int = 0, size: int = 25) -> DynamicObject:
+	def get_all_users(self, start: int = 0, size: int = 25):
 		"""
 		Get list of users of Amino.
 
@@ -1317,7 +1316,7 @@ class Client(Socket):
 	
 
 
-	def transfer_host(self, chatId: str, userIds: list) -> DynamicObject:
+	def transfer_host(self, chatId: str, userIds: list[str]):
 		"""
 		transfer host from chat
 
@@ -1332,7 +1331,7 @@ class Client(Socket):
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/transfer-organizer", data=data)
 	
 
-	def accept_host(self, chatId: str, requestId: str) -> DynamicObject:
+	def accept_host(self, chatId: str, requestId: str):
 		"""
 		Accepting host in chat.
 
@@ -1342,7 +1341,7 @@ class Client(Socket):
 		"""
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept")
 
-	def delete_co_host(self, chatId: str, userId: str) -> DynamicObject:
+	def delete_co_host(self, chatId: str, userId: str):
 		"""
 		Remove co-host from chat
 		**Parameters**:
@@ -1466,7 +1465,7 @@ class Client(Socket):
 
 
 
-	def do_not_disturb(self, chatId: str, doNotDisturb: bool = True) -> DynamicObject:
+	def do_not_disturb(self, chatId: str, doNotDisturb: bool = True):
 		"""
 		change chat notifications
 
@@ -1482,7 +1481,7 @@ class Client(Socket):
 
 
 
-	def pin_chat(self, chatId: str, pin: bool = True) -> DynamicObject:
+	def pin_chat(self, chatId: str, pin: bool = True):
 		"""
 		Pin chat
 
@@ -1493,7 +1492,7 @@ class Client(Socket):
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/{'pin' if pin else 'unpin'}", {})
 
 
-	def set_chat_background(self, chatId: str, backgroundImage: BinaryIO) -> DynamicObject:
+	def set_chat_background(self, chatId: str, backgroundImage: BinaryIO):
 		"""
 		Change chat background
 
@@ -1507,7 +1506,7 @@ class Client(Socket):
 		}
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/member/{self.userId}/background", data)
 	
-	def add_co_hosts(self, chatId: str, coHosts: list) -> DynamicObject:
+	def add_co_hosts(self, chatId: str, coHosts: list):
 		"""
 		Add assistants to chat
 
@@ -1521,7 +1520,7 @@ class Client(Socket):
 		}
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/co-host", data)
 
-	def chat_view_only(self, chatId: str, viewOnly: bool = False) -> DynamicObject:
+	def chat_view_only(self, chatId: str, viewOnly: bool = False):
 		"""
 		set view-only mode
 
@@ -1531,7 +1530,7 @@ class Client(Socket):
 		"""
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}")
 	
-	def member_can_invite_to_chat(self, chatId: str, canInvite: bool = True) -> DynamicObject:
+	def member_can_invite_to_chat(self, chatId: str, canInvite: bool = True):
 		"""
 		permission to invite users to chat
 
@@ -1541,7 +1540,7 @@ class Client(Socket):
 		"""
 		return self.req.request("POST", f"/g/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}")
 
-	def member_can_chat_tip(self, chatId: str, canTip: bool = True) -> DynamicObject:
+	def member_can_chat_tip(self, chatId: str, canTip: bool = True):
 		"""
 		permission to tip chat
 

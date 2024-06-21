@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from ..objects.auth_data import auth_data
 from ..helpers.generator import signature, generate_deviceId
 from ..objects.constants import (
@@ -12,7 +14,7 @@ from ..objects.args import UploadType
 from requests import Session
 from aiohttp import ClientSession
 from ujson import dumps
-from typing import BinaryIO
+from typing import BinaryIO, Any
 from aiofiles.threadpool.binary import AsyncBufferedReader
 from mimetypes import guess_type
 from time import time
@@ -39,10 +41,6 @@ def header(uid: str | None = None, sid: str | None = None, user_agent: str = "Ap
 	return headers
 
 
-
-
-
-
 class requestsBuilder:
 	profile: auth_data
 	session: Session
@@ -54,14 +52,14 @@ class requestsBuilder:
 		self.session = Session()
 
 
-	def request(self, method: str, endpoint: str, data: str | bytes | dict | None = None, successfully: int = 200, timeout: int | float | None =None, base_url: str = api, content_type= "application/json") -> DynamicObject:
+	def request(self, method: str, endpoint: str, data: str | bytes | dict | None = None, successfully: int = 200, timeout: int | None = None, base_url: str = api, content_type= "application/json", files: Any | None = None) -> DynamicObject:
 		if isinstance(data, dict):
 			data["timestamp"] = int(time() * 1000)
 			data = dumps(data)
 		if method.lower() == "post":content_type=content_type if data is not None else "application/x-www-form-urlencoded"
 		else:content_type = None
 
-		resp = self.session.request(method.upper(), f"{base_url}{endpoint}", data=data, headers=header(
+		resp = self.session.request(method.upper(), f"{base_url}{endpoint}", data=data, files=files, headers=header(
 			uid=self.profile.uid, sid=self.profile.sid, deviceId=self.profile.deviceId,
 			user_agent=self.profile.user_agent, language=self.profile.language,
 			data=data, content_type=content_type),
@@ -94,7 +92,7 @@ class AsyncRequestsBuilder:
 		self.session = ClientSession()
 
 
-	async def request(self, method: str, endpoint: str, data: str | bytes | dict | None = None, successfully: int = 200, timeout: int | float | None = None, base_url: str = api, content_type= "application/json") -> dict:
+	async def request(self, method: str, endpoint: str, data: str | bytes | dict | None = None, successfully: int = 200, timeout: int | None = None, base_url: str = api, content_type= "application/json") -> DynamicObject:
 		if isinstance(data, dict): data = dumps(data)
 		if method.lower() == "post":content_type=content_type if data is not None else "application/x-www-form-urlencoded"
 		else:content_type = None

@@ -25,4 +25,14 @@ __title__ = 'amino.api'
 __author__ = 'Xsarz'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2024 Xsarz'
-__version__ = '0.4.4'
+__version__ = '0.4.6'
+
+"""
+TODO:
+ fix bugs
+ add missing objects for 'magic' values - arguments
+ add response objects
+ add async version
+ rewrite some functions
+ i'm tired
+"""

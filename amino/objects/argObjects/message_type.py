@@ -15,3 +15,4 @@ class MessageTypes:
 	Strike: int = 1
 	Voice: int = 2
 	Sticker: int = 3
+	Video: int = 4

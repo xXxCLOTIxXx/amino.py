@@ -1,9 +1,11 @@
+from __future__ import annotations
 
 from threading import Thread
 from websocket import WebSocketApp, enableTrace
 from websocket import _exceptions as WSexceptions
 from ujson import loads, dumps
 from time import sleep
+from typing import Any
 
 
 
@@ -18,6 +20,7 @@ from ..objects.ws.ws_event_types import (
 from ..objects.constants import ws_url, ws_ping_interval
 from ..helpers.generator import generate_deviceId, signature
 from ..objects.reqObjects import Event
+from ..helpers.exceptions import SpecifyType
 
 
 
@@ -28,7 +31,7 @@ class EventHandler:
 
 	handlers = {}
 
-	def event(self, type):
+	def event(self, type: str) -> Any:
 		"""
 		Add event handler
 
@@ -42,7 +45,7 @@ class EventHandler:
 
 		return registerHandler
 	
-	def on_message(self):
+	def on_message(self) -> Any:
 		"""
 			add an event handler when receiving a new event in chat
 			
@@ -56,7 +59,13 @@ class EventHandler:
 
 		return registerHandler
 
-	def call(self, data):
+	def call(self, data: dict) -> None:
+		"""
+		call the event handler
+
+		**parameters**
+		- data : data from web socket
+		"""
 		data_object = Event(data["o"])
 		method = ws_message_methods.get(data["t"])
 		if method in ("chat_action_start", "chat_action_end") :
@@ -91,12 +100,23 @@ class WsRequester:
 	"""
 	class with socket requests
 	"""
-	def create_socket_event(self, data):
+	def create_socket_event(self, data: str | bytes | bytearray) -> None:
+		"""
+		send data to event handler
+
+		**parameters**
+		- data : data to send
+		"""
 		return self.ws_resolve(None, data)
 
 
-	def online(self, comId: int):
-
+	def online(self, comId: int) -> None:
+		"""
+			this request will show you in the list of online users
+			
+			**parameters**
+			- comId : id of the community
+		"""
 		data = {
 			"actions": ["Browsing"],
 			"target":f"ndc://x{comId}/",
@@ -105,7 +125,16 @@ class WsRequester:
 		self.ws_send(req_t=304, body=data)
 
 
-	def browsing_blogs(self, comId: int, blogId: str = None, quizId: str = None):
+	def browsing_blogs(self, comId: int, blogId: str | None = None, quizId: str | None = None) -> None:
+		"""
+			this request will show you in the list of blog viewers
+			
+			**parameters**
+			- comId : id of the community
+			- blogId : id of the blog
+			- quizId id of the quiz
+		"""
+		if blogId is None and quizId is None: raise SpecifyType
 		data = {
 			"actions": ["Browsing"],
 			"target": f"ndc://x{comId}/blog/{blogId or quizId}",
@@ -117,7 +146,14 @@ class WsRequester:
 		self.ws_send(req_t=304, body=data)
 
 
-	def typing(self, chatId: str, comId: int = None):
+	def typing(self, chatId: str, comId: int | None = None) -> None:
+		"""
+			create the illusion of typing
+			
+			**parameters**
+			- chatId : id of the chat
+			- comId : id of the community
+		"""
 
 		data = {
 			"actions": ["Typing"],
@@ -128,7 +164,14 @@ class WsRequester:
 		if comId:data["ndcId"]=comId
 		self.ws_send(req_t=304, body=data)
 
-	def recording(self, chatId: str, comId: int = None):
+	def recording(self, chatId: str, comId: int | None = None) -> None:
+		"""
+			create the illusion of recording audio message
+			
+			**parameters**
+			- chatId : id of the chat
+			- comId : id of the community
+		"""
 
 		data = {
 			"actions": ["Recording"],
@@ -139,8 +182,15 @@ class WsRequester:
 		self.ws_send(req_t=304, body=data)
 
 
-	def join_live_chat(self, chatId: str, comId: int = None, as_viewer: bool = False):
+	def join_live_chat(self, chatId: str, comId: int | None = None, as_viewer: bool = False) -> None:
+		"""
+			join to live chat
 
+			**parameters**
+			- chatId : id of the chat
+			- comId : id of the community
+			- as_viewer : join as a viewer
+		"""
 		data = {
 			"threadId": chatId,
 			"joinRole": 2 if as_viewer else 1,
@@ -149,8 +199,13 @@ class WsRequester:
 		self.ws_send(req_t=112, body=data)
 
 
-	def browsing_leader_boards(self, comId: int):
+	def browsing_leader_boards(self, comId: int) -> None:
+		"""
+			send a request that will show you in the list of those viewing the leaderboard
 
+			**parameters**
+			- comId : id of the community
+		"""
 		data = {
 			"o": {
 				"actions": ["Browsing"],
@@ -181,7 +236,7 @@ class Socket(EventHandler, WsRequester):
 	def socket_log(self, message: str):
 		if self.debug:print(f"[Socket]{message}")
 
-	def ws_connect(self, headers: dict, final: str):
+	def ws_connect(self, headers: dict, final: str) -> None:
 		"""
 			connect to amino sockets
 		"""
@@ -191,7 +246,7 @@ class Socket(EventHandler, WsRequester):
 			return
 		try:
 			self.socket = WebSocketApp(
-				f"{ws_url}/?signbody={final.replace('|', '%7C')}",
+				"https://localhost:8080/websocket",#f"{ws_url}/?signbody={final.replace('|', '%7C')}",
 				header = headers,
 				on_message=self.ws_resolve,
 				on_open=self.ws_on_open,
@@ -207,7 +262,7 @@ class Socket(EventHandler, WsRequester):
 			self.socket_log(f"[start] Error while starting Socket : {e}")
 
 
-	def ws_disconnect(self):
+	def ws_disconnect(self) -> None:
 		"""
 			disconnect from amino sockets
 		"""
@@ -222,7 +277,7 @@ class Socket(EventHandler, WsRequester):
 		else:
 			self.socket_log(f"[stop] Socket not running.")
 
-	def ws_send(self, req_t: int, **kwargs):
+	def ws_send(self, req_t: int, **kwargs) -> None:
 		"""
 			send data to amino socket
 		"""
@@ -236,7 +291,7 @@ class Socket(EventHandler, WsRequester):
 
 
 
-	def ws_resolve(self, ws, data):
+	def ws_resolve(self, ws: Any, data: str | bytes | bytearray) -> None:
 		try:data = loads(data)
 		except:
 			self.socket_log(f"[recive] The socket received an unreadable message: {data}")
@@ -246,18 +301,18 @@ class Socket(EventHandler, WsRequester):
 
 
 
-	def ws_on_close(self, ws, data, status):
+	def ws_on_close(self, ws: Any, data: str, status: int) -> None:
 		self.socket_log(f"[close] Socket closed: {data} [status: {status}]")
 
-	def ws_on_error(self, ws, error):
+	def ws_on_error(self, ws: Any, error: Any) -> None:
 		self.socket_log(f"[on_error]: {error}")
 
-	def ws_on_open(self, ws):
+	def ws_on_open(self, ws: Any) -> None:
 		self.active = True
 		self.socket_log(f"[start] Socket Started")
 	
 
-	def ws_headers(self, sid: str, final: str, deviceId: str = None):
+	def ws_headers(self, sid: str, final: str, deviceId: str | None = None) -> dict:
 		return {
 					"NDCDEVICEID": deviceId if deviceId else generate_deviceId(),
 					"NDCAUTH": f"sid={sid}",
