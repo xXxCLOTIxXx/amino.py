@@ -9,7 +9,8 @@ from .objects.args import (
 	RepairMethod, CommunityModules, UsersTypes,
 	AdministratorsRank, VoiceChatJoinPermissions,
 	LeaderboardTypes, Sorting, UploadType, MessageTypes,
-	PurchaseTypes, PromotionTypes, QuizMode
+	PurchaseTypes, PromotionTypes, QuizMode, CommunityJoinTypes,
+	Sorting2, FeatureDays, StrikeTime
 )
 
 from typing import BinaryIO
@@ -30,13 +31,16 @@ class CommunityClient:
 			
 		- proxies: dict = None
 			- dictionary with proxy
+			
+		- timeout: int | None = None
+			- waiting time before request is reset
 	"""
 
 	req: requestsBuilder
 	comId: str
 	
-	def __init__(self, profile: auth_data, comId: int, proxies: dict | None = None):
-		self.req = requestsBuilder(proxies=proxies, profile=profile)
+	def __init__(self, profile: auth_data, comId: int, proxies: dict | None = None, timeout: int | None = None):
+		self.req = requestsBuilder(proxies=proxies, profile=profile, timeout=timeout)
 		self.comId = comId
 
 	def __repr__(self):
@@ -299,8 +303,8 @@ class CommunityClient:
 
 		**Parameters**
 		- method: int = RepairMethod.Coins
-			- if ``RepairMethod.Coins``, it will use coins
-			- if ``RepairMethod.AminoPlus``, it will use Amino+ superpower
+			- if ``amino.arguments.RepairMethod.Coins``, it will use coins
+			- if ``amino.arguments.RepairMethod.AminoPlus``, it will use Amino+ superpower
 		"""
 		if repair_method not in RepairMethod.all: raise WrongType(repair_method)
 		data = {
@@ -1210,7 +1214,7 @@ class CommunityClient:
 
 		**Parameters**
 		- chatId: chat ID
-		- permission: voice chat access
+		- permission: voice chat access (use ``amino.arguments.VoiceChatJoinPermissions. some``)
 		"""
 		data = { "vvChatJoinType": permission }
 		return self.req.request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/vvchat-permission", data)
@@ -1239,7 +1243,7 @@ class CommunityClient:
 
 		**Parameters**
 		- type: str
-			- use ``amino.UsersTypes``
+			- use ``amino.arguments.UsersTypes``
 		- start: int = 0
 			- start pos
 		- size: int = 25
@@ -1414,7 +1418,7 @@ class CommunityClient:
 		Recieve all your users from leaderboard.
 
 		**Parameters**
-		- type: leaderboard type (use ``amino.LeaderboardTypes``)
+		- type: leaderboard type (use ``amino.arguments.LeaderboardTypes``)
 		- start : Where to start the list.
 		- size : Size of the list.
 		"""
@@ -1500,13 +1504,14 @@ class CommunityClient:
 		"""
 		return self.req.request("GET", f"/x{self.comId}/s/chat/thread?type=joined-me&start={start}&size={size}")["threadList"]
 
-	def get_public_chats(self, type: str = "recommended", start: int = 0, size: int = 25):
+	def get_public_chats(self, type: str = Sorting2.Recommended, start: int = 0, size: int = 25):
 		"""
 		List of Public Chats of the Community.
 
 		**Parameters**
 		- start : Where to start the list.
 		- size : Size of the list.
+		- type : filter chats by type. use ``Sorting2`` object
 		"""
 		return self.req.request("GET", f"/x{self.comId}/s/chat/thread?type=public-all&filterType={type}&start={start}&size={size}")["threadList"]
 
@@ -1744,7 +1749,7 @@ class CommunityClient:
 		"""
 		return self.req.request("GET", f"/x{self.comId}/s/shared-folder/stats")["stats"]
 
-	def get_shared_folder_files(self, type: str = "latest", start: int = 0, size: int = 25):
+	def get_shared_folder_files(self, type: str = Sorting2.Latest, start: int = 0, size: int = 25):
 		"""
 		Getting all available files in shared folder.
 
@@ -1792,34 +1797,36 @@ class CommunityClient:
 			url = f"/x{self.comId}/s/admin/operation?pagingType=t&size={size}"
 		return self.req.request("GET", url)["adminLogList"]
 
-	def feature(self, time: int, userId: str | None = None, chatId: str | None = None, blogId: str | None = None, wikiId: str | None = None):
+	def feature(self, days: int = FeatureDays.ONE_DAY, userId: str | None = None, chatId: str | None = None, blogId: str | None = None, wikiId: str | None = None):
 		"""
-		TODO time OBJECTS
 		Feature object.
 
 		**Parameters**
-		- time: int
+		- days: feature days
 		- userId: user Id
 		- blogId: blog Id
 		- wikiId: wiki Id
 		- quizId: quiz Id
 			- can be only one field
 		"""
-		if chatId:
-			if time == 1: time = 3600
-			if time == 2: time = 7200
-			if time == 3: time = 10800
-
-		else:
-			if time == 1: time = 86400
-			elif time == 2: time = 172800
-			elif time == 3: time = 259200
-			else: raise WrongType(time)
+		times = {
+			"chatId": {
+				1: 3600,
+				2: 7200,
+				3: 10800
+			},
+			"ect": {
+				1: 86400,
+				2: 172800,
+				3: 259200,
+			}
+		}
+		if days not in times[chatId].keys(): raise WrongType(days)
 
 		data = {
 			"adminOpName": 114,
 			"adminOpValue": {
-				"featuredDuration": time
+				"featuredDuration": times["chatId" if chatId else "ect"][days]
 			}
 		}
 
@@ -2003,29 +2010,45 @@ class CommunityClient:
 
 		return self.req.request("POST", f"/x{self.comId}/s/notice", data)
 
-	
-	def strike(self, userId: str, time: int, title: str = None, reason: str = None):
+
+	def get_strike_templates(self):
+		"""
+		get strike templates
+		"""
+		return self.req.request("GET", f"/x{self.comId}/s/notice/message-template/strike")
+
+	def get_warn_templates(self):
+		"""
+		get warn templates
+		"""
+		return self.req.request("GET", f"/x{self.comId}/s/notice/message-template/warning")
+
+
+	def strike(self, userId: str, time: int = StrikeTime.ONE_HOUR, title: str = None, reason: str = None):
 		"""
 		Give a strike (warn + read only mode) to user.
 
 		**Parameters**
 		- userId: str
-		- time: it's a trash XD
 		- title: strike title
 		- reason: strike reason
+		- time: 
+			- time == 1 is 1 hour
+			- time == 2 is 3 hours
+			- time == 3 is 6 hours
+			- time == 4 is 12 hours
+			- time == 5 is 24 hours
+				- use ``amino.arguments.StrikeTime``
 		"""
-		if time == 1:
-			time = 86400
-		elif time == 2:
-			time = 10800
-		elif time == 3:
-			time = 21600
-		elif time == 4:
-			time = 43200
-		elif time == 5:
-			time = 86400
-		else:
-			raise WrongType(time)
+
+		times = {
+			1: 86400,
+			2: 10800,
+			3: 21600,
+			4: 43200,
+			5: 86400
+		}
+		if time not in times.keys():raise WrongType(time)
 
 		data = {
 			"uid": userId,
@@ -2036,7 +2059,7 @@ class CommunityClient:
 				"objectType": 0
 			},
 			"penaltyType": 1,
-			"penaltyValue": time,
+			"penaltyValue": times[time],
 			"adminOpNote": {},
 			"noticeType": 4
 		}
@@ -2163,6 +2186,7 @@ class CommunityClient:
 		**Parameters**
 		- objectId: id of object that you wanna buy
 		- objectType: type of object that you wanna buy
+			- use ``amino.arguments.PurchaseTypes. some``
 		- aminoPlus: is amino+ object?
 		- isAutoRenew:  do you wanna auto renew your purchase?
 		"""
@@ -2314,7 +2338,7 @@ class CommunityClient:
 		"""
 		Apply bubble that you want.
 
-		**Parameters**:
+		**Parameters**
 		- bubbleId: bubble Id
 		- chatId: chat Id
 		- applyToAll: apply bubble to all chats?
@@ -2333,8 +2357,21 @@ class CommunityClient:
 	ACM
 	"""
 
-	def create_community(self, name: str, tagline: str, icon: BinaryIO, themeColor: str, joinType: int = 0, primaryLanguage: str = "en"):
+	def create_community(self, name: str, tagline: str, icon: BinaryIO, themeColor: str, joinType: int = CommunityJoinTypes.Open, primaryLanguage: str = "en"):
+		"""
+		Creating community.
 
+		Accepting:
+		- name: community name
+		- tagline: community tagline
+		- icon: icon
+		- themeColor: color
+		- joinType: use ``amino.arguments.CommunityJoinTypes. some``
+			- 0 is open
+			- 1 is semi-closed (you can request to be added in community)
+			- 2 is fully closed (UNAVAILABLE AT ALL FOR ALL APPROVED COMMUNITIES)
+		- primaryLanguage: community language
+		"""
 		data = {
 			"icon": {
 				"height": 512.0,
@@ -2356,12 +2393,94 @@ class CommunityClient:
 
 
 	def get_community_themepack_info(self):
+		"""
+		This method can be used for getting info about current themepack of community.
+		"""
 		return self.req.request("POST", f"/g/s-x{self.comId}/community/info?withTopicList=1&withInfluencerList=1&influencerListOrderStrategy=fansCount")['community']['themePack']
 
 	def upload_themepack(self, file: BinaryIO):
+		"""
+		Uploading new themepack.
+
+		File is technically a ZIP file, but you should rename .zip to .ndthemepack.
+		Also this "zip" file have specific stucture.
+
+		The structure is:
+		- theme_info.json
+		- images/
+			- background/
+				- background_375x667.jpeg
+				- background_750x1334.jpeg
+			- logo/
+				- logo_219x44.png
+				- logo_439x88.png
+			- titlebar/
+				- titlebar_320x64.jpeg
+				- titlebar_640x128.jpeg
+			- titlebarBackground/
+				- titlebarBackground_375x667.jpeg
+				- titlebarBackground_750x1334.jpeg
+		
+		And now its time to explain tricky "theme.json".
+		
+		- I can't really explain "id" here, *maybe* its random uuid4.
+		- "format-version" **SHOULD** be "1.0", its themepack format version
+		- "author" is.. nickname or aminoId of theme uploader (or agent, it doesnt matter)
+		- "revision".. u *can* leave revision that you have, Amino will do all stuff instead of you
+		- "theme-color" should be **VALID** hex color. I think they didn't fixed that you can pass invalid hex color, but it will cost a crash on every device
+		
+		About images in "theme.json":
+
+		- for logo folder stands key "logo" in json, for titlebar - "titlebar-image", for titlebarBackground - "titlebar-background-image", for background - "background-image"
+		- you can *pass* or *not pass* these keys in json, if they are not passed they will ignored/deleted
+		- keys have array values like this:
+			- [
+				{
+					"height": height*2,
+					"path": "images/logo/logo_width*2xheight*2.png",
+					"width": width*2,
+					"x": 0,
+					"y": 0
+				},
+				{
+					"height": height,
+					"path": "images/logo/logo_widthxheight.png",
+					"width": width,
+					"x": 0,
+					"y": 0
+				}
+			]
+		- default values of height (h) and width (w) for every key:
+			- "background-image":
+				- w = 375
+				- h = 667
+			- "logo":
+				- w = 196
+				- h = 44
+			- "titlebar-background-image":
+				- w = 375
+				- h = 667
+			- "titlebar-image":
+				- w = 320
+				- h = 64
+		- you *can* specify "x" and "y" if you want
+		- theoretically you can provide different "w" and "h"
+
+		**Parameters**
+		- file: zip file (rename .zip to .ndthemepack)
+		"""
 		return self.req.request("POST", f"/x{self.comId}/s/media/upload/target/community-theme-pack", data=file.read())
 
 	def delete_community(self, email: str, password: str, verificationCode: str):
+		"""
+		Deleting community.
+
+		**Parameters**
+		- email: agent email
+		- password: agent password
+		- verificationCode: email verification code
+		"""
+		
 		data = {
 			"secret": f"0 {password}",
 			"validationContext": {
@@ -2376,12 +2495,32 @@ class CommunityClient:
 		return self.req.request("POST", f"/g/s-x{self.comId}/community/delete-request", data)
 
 	def my_managed_communities(self, start: int = 0, size: int = 25):
+		"""
+		Getting all communities where you are leader.
+
+		**Parameters**
+		- start: start pos
+		- size: how much you want to get
+		"""
 		return self.req.request("GET", f"/g/s/community/managed?start={start}&size={size}")["communityList"]
 
 	def get_categories(self, start: int = 0, size: int = 25):
+		"""
+		Getting categories of communities.
+
+		**Parameters**
+		- start: start pos
+		- size: how much you want to get
+		"""
 		return self.req.request("GET", f"/x{self.comId}/s/blog-category?start={start}&size={size}")
 
 	def change_sidepanel_color(self, color: str):
+		"""
+		Change sidepanel color.
+
+		**Parameters**
+		- color: should be hex color like "#123ABC"
+		"""
 		data = {
 			"path": "appearance.leftSidePanel.style.iconColor",
 			"value": color
@@ -2389,30 +2528,74 @@ class CommunityClient:
 		return self.req.request("POST", f"/x{self.comId}/s/community/configuration", data)
 
 	def promote(self, userId: str, rank: str):
+		"""
+		Promote user to curator, leader or agent.
+
+		**Parameters**
+		- userId: user Id
+		- rank: can be only "agent"/"transfer-agent", "leader" or "curator"
+			- use ``amino.arguments.AdministratorsRank. some``
+		"""
 		if rank not in AdministratorsRank.all:raise SpecifyType(f"[AdministratorsRank.all] -> Available ranks: {AdministratorsRank.all}")
 		rank = rank.lower().replace("agent", "transfer-agent")
 		return self.req.request("POST", f"/x{self.comId}/s/user-profile/{userId}/{rank}")
 
 	def get_join_requests(self, start: int = 0, size: int = 25):
+		"""
+		Get all requests to join your community.
+
+		**Parameters**
+		- start: start pos
+		- size: how much you want to get
+		"""
 		return self.req.request("GET", f"/x{self.comId}/s/community/membership-request?status=pending&start={start}&size={size}")
 	
 	def accept_join_request(self, userId: str):
+		"""
+		Accept user to join your community.
+
+		**Parameters**
+		- user Id: str
+		"""
 		data = {}
 		return self.req.request("POST", f"/x{self.comId}/s/community/membership-request/{userId}/accept", data)
 	
 	def reject_join_request(self, userId: str):
+		"""
+		Reject user to join your community.
+
+		**Parameters**
+		- userId: user id
+		"""
 		data = {}
 		return self.req.request("POST", f"/x{self.comId}/s/community/membership-request/{userId}/reject", data)
 
 	def get_community_stats(self):
+		"""
+		Get community statistics.
+		"""
 		return self.req.request("GET", f"/x{self.comId}/s/community/stats")["communityStats"]
 
-	def get_community_moderation_stats(self, type: str, start: int = 0, size: int = 25):
+	def get_community_moderation_stats(self, type: str = "leader", start: int = 0, size: int = 25):
+		"""
+		Get community moderation statistics.
+
+		**Parameters**
+		- type: can be only "leader" or "curator"
+		- start: start pos
+		- size: how much you want to get
+		"""
 		if type.lower() not in ("leader", "curator"):raise WrongType(f"{type} not in ('leader', 'curator')")
 		return self.req.request("GET", f"/x{self.comId}/s/community/stats/moderation?type={type.lower()}&start={start}&size={size}")["userProfileList"]
 
 	def change_welcome_message(self, message: str, isEnabled: bool = True):
+		"""
+		Change welcome message of community.
 
+		**Parameters**
+		- message: welcome message
+		- isEnabled: Enable welcome message?
+		"""
 		data = {
 			"path": "general.welcomeMessage",
 			"value": {
@@ -2423,6 +2606,12 @@ class CommunityClient:
 		return self.req.request("POST", f"/x{self.comId}/s/community/configuration", data)
 
 	def change_community_invite_permission(self, onlyAdmins: bool = True) -> int:
+		"""
+		permission to invite to the community
+
+		**Parameters**
+		- onlyAdmins: only Admins can invite ?
+		"""
 		data = {
 			"path": "general.invitePermission",
 			"value": 2 if onlyAdmins is True else 1,
@@ -2432,18 +2621,39 @@ class CommunityClient:
 
 
 	def change_community_aminoId(self, aminoId: str):
+		"""
+		Change AminoID of community.
+
+		**Parameters**
+		- aminoId: amino Id
+		"""
 		data = {
 			"endpoint": aminoId,
 		}
 		return self.req.request("POST", f"/x{self.comId}/s/community/settings", data)
 
 	def change_guidelines(self, message: str):
+		"""
+		Change rules of community.
 
+		**Parameters**
+		- message: text
+		"""
 		data = {"content": message}
 		return self.req.request("POST", f"/x{self.comId}/s/community/guideline", data)
 
-	def edit_community(self, name: str = None, description: str = None, aminoId: str = None, primaryLanguage: str = None, themePackUrl: str = None):
+	def edit_community(self, name: str | None = None, description: str | None = None, aminoId: str | None = None, primaryLanguage: str | None = None, themePackUrl: str | None = None):
+		"""
+		Edit community.
 
+		**Parameters**
+		- name: community name
+		- description: community description
+		- aminoId: community aminoId
+		- primaryLanguage: community language
+		- themePackUrl: community theme pack (use ``upload_themepack()``)
+		"""
+				
 		data = {}
 
 		if name is not None:
@@ -2460,6 +2670,13 @@ class CommunityClient:
 		return self.req.request("POST", f"/x{self.comId}/s/community/settings", data)
 
 	def change_module(self, module: str, isEnabled: bool):
+		"""
+		Enable or disable module.
+
+		**Parameters**
+		- module: use ``amino.arguments.CommunityModules. some``
+		- isEnabled: enable the module?
+		"""
 		if module not in CommunityModules.all:raise SpecifyType(f"[CommunityModules.all] -> Available community modules: {CommunityModules.all}")
 		data = {
 			"path": module,
@@ -2468,6 +2685,14 @@ class CommunityClient:
 		return self.req.request("POST", f"/x{self.comId}/s/community/configuration", data)
 	
 	def add_influencer(self, userId: str, monthlyFee: int):
+		"""
+		Create user fanclub.
+
+		**Parameters**
+		- userId: user Id
+		- monthlyFee: subscription cost per month
+			- can be maximum 500 coins per month
+		"""
 		data = {
 			"monthlyFee": monthlyFee
 		}
@@ -2475,10 +2700,29 @@ class CommunityClient:
 		
 
 	def remove_influencer(self, userId: str):
+		"""
+		Delete user fanclub.
+
+		**Parameters**
+		- userId: user id
+		"""
 		return self.req.request("DELETE", f"/x{self.comId}/s/influencer/{userId}")
 
 	def get_notice_list(self, start: int = 0, size: int = 25):
+		"""
+		Get notices list.
+
+		**Parameters**
+		- start: start pos
+		- size: how much you want to get
+		"""
 		return self.req.request("GET", f"/x{self.comId}/s/notice?type=management&status=1&start={start}&size={size}")["noticeList"]
 
 	def delete_pending_role(self, noticeId: str):
+		"""
+		Delete pending role.
+
+		**Parameters**
+		- noticeId: notice Id
+		"""
 		return self.req.request("DELETE", f"/x{self.comId}/s/notice/{noticeId}")

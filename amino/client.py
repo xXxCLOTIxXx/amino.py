@@ -47,18 +47,42 @@ class Client(Socket):
 
 		- sock_debug: bool = False
 			- output debug messages in the socket class to the console
+
+		- auto_device: bool = False
+			- generate new deviceId every request?
+
+		- auto_user_agent: bool = False
+			- generate new user agent every request?
+
+		- timeout: int | None = None
+			- waiting time before request is reset
 	"""
 	
 	req: requestsBuilder
-	socket_enable = True
+	socket_enable = False
 
-	def __init__(self, deviceId: str | None = None, language: str = "en", user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2", proxies: dict | None = None, socket_enable: bool = True, sock_trace: bool = False, sock_debug: bool = False):
+	def __init__(self,
+			  deviceId: str | None = None,
+			  language: str = "en",
+			  user_agent: str = "Apple iPhone12,1 iOS v15.5 Main/3.12.2",
+			  proxies: dict | None = None,
+			  socket_enable: bool = True,
+			  sock_trace: bool = False,
+			  sock_debug: bool = False,
+			  auto_device: bool = False,
+			  auto_user_agent: bool = False,
+			  timeout: int | None = None
+			  ):
+
 		self.req = requestsBuilder(
 			proxies=proxies,
+			timeout=timeout,
 			profile=auth_data(
-				deviceId=deviceId if deviceId else generate_deviceId(),
+				deviceId=deviceId,
 				language=language,
-				user_agent=user_agent
+				user_agent=user_agent,
+				auto_device=auto_device,
+				auto_user_agent=auto_user_agent
 			)
 		)
 		self.socket_enable = socket_enable
@@ -89,6 +113,10 @@ class Client(Socket):
 	@property
 	def language(self) -> str:
 		return self.req.profile.language
+
+	@property
+	def user_agent(self) -> str:
+		return self.req.profile.user_agent
 
 
 

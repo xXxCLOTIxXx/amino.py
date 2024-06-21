@@ -246,7 +246,7 @@ class Socket(EventHandler, WsRequester):
 			return
 		try:
 			self.socket = WebSocketApp(
-				"https://localhost:8080/websocket",#f"{ws_url}/?signbody={final.replace('|', '%7C')}",
+				f"{ws_url}/?signbody={final.replace('|', '%7C')}",
 				header = headers,
 				on_message=self.ws_resolve,
 				on_open=self.ws_on_open,

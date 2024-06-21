@@ -17,3 +17,7 @@ from .argObjects.purchase_types import PurchaseTypes
 from .argObjects.client_types import ClientTypes
 from .argObjects.embed_types import EmbedTypes, AttachedObjectTypes
 from .argObjects.qmode import QuizMode
+from .argObjects.community_join_types import CommunityJoinTypes
+from .argObjects.sorting2 import Sorting2
+from .argObjects.feature_days import FeatureDays
+from .argObjects.strike_time import StrikeTime

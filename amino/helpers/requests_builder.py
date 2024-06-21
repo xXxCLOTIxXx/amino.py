@@ -45,11 +45,13 @@ class requestsBuilder:
 	profile: auth_data
 	session: Session
 	proxies: dict
+	timeout: int | None
 
-	def __init__(self, profile: auth_data, proxies: dict = None):
+	def __init__(self, profile: auth_data, proxies: dict = None, timeout: int = None):
 		self.profile = profile
 		self.proxies = proxies
 		self.session = Session()
+		self.timeout: int | None = timeout
 
 
 	def request(self, method: str, endpoint: str, data: str | bytes | dict | None = None, successfully: int = 200, timeout: int | None = None, base_url: str = api, content_type= "application/json", files: Any | None = None) -> DynamicObject:
@@ -63,7 +65,7 @@ class requestsBuilder:
 			uid=self.profile.uid, sid=self.profile.sid, deviceId=self.profile.deviceId,
 			user_agent=self.profile.user_agent, language=self.profile.language,
 			data=data, content_type=content_type),
-			timeout=timeout, proxies=self.proxies)
+			timeout=timeout if timeout else self.timeout, proxies=self.proxies)
 		return check_exceptions(resp.text, resp.status_code) if resp.status_code != successfully else DynamicObject(resp.json())
 
 

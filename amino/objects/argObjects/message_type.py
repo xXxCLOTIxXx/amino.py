@@ -8,6 +8,7 @@ class MessageTypes:
 	- Strike
 	- Voice
 	- Sticker
+	- Video
 	
 	"""
 

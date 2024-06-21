@@ -13,13 +13,27 @@ class auth_data:
 	- deviceId
 
 	"""
-	sid: str = None
-	uid: str = None
-	user_agent: str = None
+	sid: str | None = None
+	uid: str | None = None
+	_user_agent: str = None
 	language: str = None 
-	deviceId: str = None
+	_deviceId: str = None
+	auto_device: bool = False
+	auto_user_agent: bool = False
 
-	def __init__(self, deviceId: str = None, language: str = "en", user_agent: str = generate_user_agent()):
-		self.deviceId = deviceId if deviceId else generate_deviceId()
+	def __init__(self, deviceId: str | None = None, language: str = "en", user_agent: str | None = None, auto_device: bool = False, auto_user_agent: bool = False):
+		self._deviceId = deviceId if deviceId else generate_deviceId()
 		self.language = language
-		self.user_agent = user_agent
+		self._user_agent = user_agent if user_agent else generate_user_agent()
+		self.auto_device = auto_device
+		self.auto_user_agent = auto_user_agent
+	
+	@property
+	def deviceId(self):
+		return self._deviceId if self.auto_device is False else generate_deviceId()
+
+	@property
+	def user_agent(self):
+		return self._user_agent if self.auto_user_agent is False else generate_user_agent()
+
+	
