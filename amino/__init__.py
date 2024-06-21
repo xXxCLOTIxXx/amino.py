@@ -1,4 +1,10 @@
+"""
+Library for working with amino servers [https://aminoapps.com/]
 
+Has both synchronous and asynchronous versions
+
+Note: the library is in testing, so an asynchronous version will be added as soon as testing of all functions is completed
+"""
 
 from .client import Client
 from .community_client import CommunityClient
@@ -19,4 +25,11 @@ __title__ = 'amino.api'
 __author__ = 'Xsarz'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2024 Xsarz'
-__version__ = '0.4'
+__version__ = '0.4.7'
+
+"""
+TODO:
+ add response objects
+ add async version
+ rewrite some functions
+"""

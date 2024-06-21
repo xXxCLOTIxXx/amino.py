@@ -1,5 +1,11 @@
 
 class DynamicObject:
+    """
+    an object that generates dynamic attributes depending on the input data
+
+    DynamicObject.get_original_data() -> will return original data at any level
+
+    """
     def __init__(self, data):
         self.__dict__['attributes'] = {}
         self.__dict__['is_list'] = isinstance(data, list)

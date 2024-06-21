@@ -1,5 +1,17 @@
 class RepairMethod:
-    Coins: str = "1"
-    AminoPlus: str = "2"
+	"""
+	types of methods for repair
 
-    all: list = [Coins, AminoPlus]
+	attributes:
+	
+	- Coins
+	- AminoPlus
+
+	- all (list of all attributes)
+
+	"""
+	  
+	Coins: str = "1"
+	AminoPlus: str = "2"
+
+	all: list = [Coins, AminoPlus]

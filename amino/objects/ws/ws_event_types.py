@@ -1,5 +1,13 @@
 
 class wsEvent:
+	"""
+	types of socket events in amino
+
+	attributes:
+	
+	- __slots__ (list of all attributes)
+
+	"""
 	__slots__ = (
 	"chat_action_start", "chat_action_end", "chat_message", "notification", "socket_error_message", "socket_exception_message", "typing_start", "recording_start",
 	"typing_end", "recording_end", "on_message_notification", "on_invite_to_voice_chat_notification", "on_invite_to_video_chat_notification", "on_text_message",

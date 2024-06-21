@@ -8,24 +8,3 @@ host = "service.aminoapps.com"
 api = f"https://{host}/api/v1"
 ws_url = f"wss://ws{randint(1, 4)}.aminoapps.com"
 ws_ping_interval = 3
-
-
-
-community_modules = {
-	"chat": "module.chat.enabled",
-	"livechat": "module.chat.avChat.videoEnabled",
-	"screeningroom": "module.chat.avChat.screeningRoomEnabled",
-	"publicchats": "module.chat.publicChat.enabled",
-	"posts": "module.post.enabled",
-	"ranking": "module.ranking.enabled",
-	"leaderboards": "module.ranking.leaderboardEnabled",
-	"featured": "module.featured.enabled",
-	"featuredposts": "module.featured.postEnabled",
-	"featuredusers": "module.featured.memberEnabled",
-	"featuredchats": "module.featured.publicChatRoomEnabled",
-	"sharedfolder": "module.sharedFolder.enabled",
-	"influencer": "module.influencer.enabled",
-	"catalog": "module.catalog.enabled",
-	"externalcontent": "module.externalContent.enabled",
-	"topiccategories": "module.topicCategories.enabled"
-}

@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 info = {
 	"name": "amino.py.api",
-	"version": "0.2.7",
+	"version": "0.4.7",
 	"github_page": "https://github.com/xXxCLOTIxXx/amino.py",
 	"download_link": "https://github.com/xXxCLOTIxXx/amino.py/archive/refs/heads/main.zip",
 	"license": "MIT",
@@ -29,7 +29,13 @@ info = {
 		"python3.x",
 		"xsarz",
 		"official",
-		"amino.py.api"
+		"amino.py.api",
+		"amino.fix",
+		"amino.light",
+		"amino.ligt.py",
+		"AminoLightPy",
+		"medialab",
+		"aminolightpy",
 	],
 
 	"install_requires": [
@@ -64,5 +70,13 @@ setup(
 	long_description_content_type = info.get("long_description_content_type"),
 	keywords = info.get("keywords"),
 	install_requires = info.get("install_requires"),
-	packages = find_packages()
+	packages = find_packages(),
+    	classifiers=[
+	        "Intended Audience :: Developers",
+	        "License :: OSI Approved :: MIT License",
+	        "Programming Language :: Python :: 3.9",
+	        "Programming Language :: Python :: 3.10",
+	        "Programming Language :: Python :: 3.11",
+	        "Programming Language :: Python :: 3.12",
+    ],
 )

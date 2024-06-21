@@ -1,4 +1,30 @@
 class CommunityModules:
+    """
+    community modules (acm)
+    
+    attributes:
+
+    - Chat
+    - LiveChat
+    - ScreeningRoom
+    - PublicChats
+    - Posts
+    - Ranking
+    - LeaderBoards
+    - Featured
+    - FeaturedPosts
+    - FeaturedUsers
+    - FeaturedChats
+    - SharedFolder
+    - Influencer
+    - Catalog
+    - ExternalContent
+    - TopicCategories
+
+    - all (list of all attributes)
+
+    """
+
     Chat: str = "module.chat.enabled"
     LiveChat: str = "module.chat.avChat.videoEnabled"
     ScreeningRoom: str = "module.chat.avChat.screeningRoomEnabled"

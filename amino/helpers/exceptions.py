@@ -887,7 +887,7 @@ exceptions_list = {
 	9901: InvalidName
 }
 
-def check_exceptions(data, status):
+def check_exceptions(data : str, status : int) -> None:
 	try:
 		data = loads(data)
 		try:code = data["api:statuscode"]
