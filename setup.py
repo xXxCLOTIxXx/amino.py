@@ -41,6 +41,7 @@ info = {
 	"install_requires": [
 		"requests",
 		"aiohttp",
+		"aiofiles",
 		"websocket-client==1.3.1",
 		"websockets",
 		"ujson",
