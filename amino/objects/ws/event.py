@@ -1,4 +1,4 @@
-from ..reqObjects import DynamicObject
+from ..objects import Message
 
 class Event:
 	"""
@@ -12,10 +12,10 @@ class Event:
 	)
 
 	def __init__(self, data: dict):
-		self.data = data
+		self.data: dict = data
 		params = data.get("params", {})
 		
-		self.comId = data.get("ndcId")
+		self.comId: int = data.get("ndcId")
 		self.alertOption = data.get("alertOption")
 		self.membershipStatus = data.get("membershipStatus")
 		self.actions = data.get("actions")
@@ -24,4 +24,4 @@ class Event:
 		self.threadType = params.get("threadType")
 		self.duration = params.get("duration")
 		self.id = data.get("id")
-		self.message = DynamicObject(data.get("chatMessage", {}))
+		self.message: Message = Message(data.get("chatMessage", {}))

@@ -3,7 +3,6 @@ from .helpers.requests_builder import AsyncRequestsBuilder
 from .helpers.generator import generate_deviceId, sid_to_uid
 from .helpers.exceptions import SpecifyType
 from .ws.AsyncSocket import AsyncSocket
-from .objects.reqObjects import DynamicObject
 
 
 from time import time as timestamp
@@ -44,7 +43,7 @@ class AsyncClient(AsyncSocket):
 
 
 
-	async  def login(self, email: str, password: str = None, secret: str = None) -> DynamicObject:
+	async  def login(self, email: str, password: str = None, secret: str = None):
 		if password is None and secret is None: raise SpecifyType
 		result = await self.req.request("POST", "/g/s/auth/login", {
 			"email": email,
@@ -61,7 +60,7 @@ class AsyncClient(AsyncSocket):
 		return result["userProfile"]
 
 
-	async def login_phone(self, phone: str, password: str = None, secret: str = None) -> DynamicObject:
+	async def login_phone(self, phone: str, password: str = None, secret: str = None):
 		if password is None and secret is None: raise SpecifyType
 		result = await self.req.request("POST", "/g/s/auth/login", {
 			"phoneNumber": phone,
@@ -87,7 +86,7 @@ class AsyncClient(AsyncSocket):
 
 
 
-	async def logout(self) -> DynamicObject:
+	async def logout(self):
 		result = await self.req.request("POST", "/g/s/auth/logout", {
 			"deviceID": self.profile.deviceId,
 			"clientType": 100,

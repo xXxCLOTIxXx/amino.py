@@ -25,7 +25,7 @@ __title__ = 'amino.api'
 __author__ = 'Xsarz'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2024 Xsarz'
-__version__ = '0.4.7'
+__version__ = '0.4.8'
 
 """
 TODO:

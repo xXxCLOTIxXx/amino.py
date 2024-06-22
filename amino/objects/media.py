@@ -10,7 +10,7 @@ class MediaObject:
 
 	"""
 	 
-	__slots__ = ("data", "mediaValue")
+	__slots__ = ("json", "mediaValue")
 	
 	def __init__(self, data: dict):
 		if not data:
@@ -18,5 +18,5 @@ class MediaObject:
 				setattr(self, attr, None)
 			return
 		
-		self.data = data
+		self.json = data
 		self.mediaValue = data.get("mediaValue")

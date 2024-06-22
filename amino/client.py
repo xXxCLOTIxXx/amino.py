@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from .objects.auth_data import auth_data
 from .helpers.requests_builder import requestsBuilder
-from .helpers.generator import generate_deviceId, sid_to_uid, timezone
+from .helpers.generator import sid_to_uid, timezone
 from .helpers.exceptions import SpecifyType, WrongType, UnsupportedLanguage
 from .ws.socket import Socket
 

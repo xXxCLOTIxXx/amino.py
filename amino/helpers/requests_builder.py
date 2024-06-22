@@ -7,7 +7,6 @@ from ..objects.constants import (
 )
 from .exceptions import check_exceptions, SpecifyType
 from ..objects.reqObjects import MediaObject
-from ..objects.dynamic_object import DynamicObject
 from ..objects.args import UploadType
 
 
@@ -54,7 +53,7 @@ class requestsBuilder:
 		self.timeout: int | None = timeout
 
 
-	def request(self, method: str, endpoint: str, data: str | bytes | dict | None = None, successfully: int = 200, timeout: int | None = None, base_url: str = api, content_type= "application/json", files: Any | None = None) -> DynamicObject:
+	def request(self, method: str, endpoint: str, data: str | bytes | dict | None = None, successfully: int = 200, timeout: int | None = None, base_url: str = api, content_type= "application/json", files: Any | None = None) -> dict:
 		if isinstance(data, dict):
 			data["timestamp"] = int(time() * 1000)
 			data = dumps(data)
@@ -66,7 +65,7 @@ class requestsBuilder:
 			user_agent=self.profile.user_agent, language=self.profile.language,
 			data=data, content_type=content_type),
 			timeout=timeout if timeout else self.timeout, proxies=self.proxies)
-		return check_exceptions(resp.text, resp.status_code) if resp.status_code != successfully else DynamicObject(resp.json())
+		return check_exceptions(resp.text, resp.status_code) if resp.status_code != successfully else resp.json()
 
 
 
@@ -94,7 +93,7 @@ class AsyncRequestsBuilder:
 		self.session = ClientSession()
 
 
-	async def request(self, method: str, endpoint: str, data: str | bytes | dict | None = None, successfully: int = 200, timeout: int | None = None, base_url: str = api, content_type= "application/json") -> DynamicObject:
+	async def request(self, method: str, endpoint: str, data: str | bytes | dict | None = None, successfully: int = 200, timeout: int | None = None, base_url: str = api, content_type= "application/json"):
 		if isinstance(data, dict): data = dumps(data)
 		if method.lower() == "post":content_type=content_type if data is not None else "application/x-www-form-urlencoded"
 		else:content_type = None
@@ -104,7 +103,7 @@ class AsyncRequestsBuilder:
 			user_agent=self.profile.user_agent, language=self.profile.language,
 			data=data, content_type=content_type),
 			timeout=timeout, proxy=self.proxies)
-		return check_exceptions(await resp.text(), resp.status) if resp.status != successfully else DynamicObject(await resp.json())
+		return check_exceptions(await resp.text(), resp.status) if resp.status != successfully else await resp.json()
 
 
 
