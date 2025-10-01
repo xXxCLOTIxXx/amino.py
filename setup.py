@@ -36,15 +36,16 @@ info = {
 		"AminoLightPy",
 		"medialab",
 		"aminolightpy",
+		"dorksapi",
+		"aminodorks",
 	],
 
 	"install_requires": [
 		"requests",
 		"aiohttp",
 		"aiofiles",
-		"websocket-client==1.3.1",
-		"websockets",
-		"ujson",
+		"websocket-client",
+		"orjson",
 		"json_minify"
 
 	]
