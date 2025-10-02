@@ -1,6 +1,6 @@
 from amino.api.base import BaseClass
 from amino import WrongType
-from amino import args, MediaObject
+from amino import args, MediaObject, Message, UserProfile, BaseObject, Chat, ChatMessages
 from amino.helpers.generator import clientrefid, b64encode
 from typing import BinaryIO
 from mimetypes import guess_type
@@ -10,7 +10,7 @@ class GlobalChatsModule(BaseClass):
 
 	def upload_media(self, file: BinaryIO, fileType: str | None = None) -> MediaObject: ...
 
-	def get_my_chats(self, start: int = 0, size: int = 25):
+	def get_my_chats(self, start: int = 0, size: int = 25) -> list[Chat]:
 		"""
 		List of Chats the account is in.
 
@@ -19,18 +19,20 @@ class GlobalChatsModule(BaseClass):
 		- size : Size of the list.
 
 		"""
-		return self.req.make_sync_request("GET", f"/g/s/chat/thread?type=joined-me&start={start}&size={size}").json()["threadList"]
+		result = self.req.make_sync_request("GET", f"/g/s/chat/thread?type=joined-me&start={start}&size={size}").json()["threadList"]
+		return [Chat({"thread":x}) for x in result]
 
-	def get_chat(self, chatId: str):
+
+	def get_chat(self, chatId: str) -> Chat:
 		"""
 		Get the Chat Object from an Chat ID.
 
 		**Parameters**
 		- chatId : ID of the Chat.
 		"""
-		return self.req.make_sync_request("GET", f"/g/s/chat/thread/{chatId}").json()["thread"]
+		return Chat(self.req.make_sync_request("GET", f"/g/s/chat/thread/{chatId}").json())
 
-	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25):
+	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25) -> list[UserProfile]:
 		"""
 		Getting users in chat.
 
@@ -39,25 +41,27 @@ class GlobalChatsModule(BaseClass):
 		- start : Where to start the list.
 		- size : Size of the list.
 		"""
-		return self.req.make_sync_request("GET", f"/g/s/chat/thread/{chatId}/member?cv=1.2&type=default&start={start}&size={size}").json()["memberList"]
+		result = self.req.make_sync_request("GET", f"/g/s/chat/thread/{chatId}/member?cv=1.2&type=default&start={start}&size={size}").json()["memberList"]
+		return [UserProfile({"userProfile": x}) for x in result]
 
-	def join_chat(self, chatId: str):
+
+	def join_chat(self, chatId: str) -> BaseObject:
 		"""
 		Join an Chat.
 
 		**Parameters**
 		- chatId : ID of the Chat.
 		"""
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/member/{self.userId}").json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/member/{self.userId}").json())
 
-	def leave_chat(self, chatId: str):
+	def leave_chat(self, chatId: str) -> BaseObject:
 		"""
 		Leave an Chat.
 
 		**Parameters**
 		- chatId : ID of the Chat.
 		"""
-		return self.req.make_sync_request("DELETE", f"/g/s/chat/thread/{chatId}/member/{self.userId}").json()
+		return BaseObject(self.req.make_sync_request("DELETE", f"/g/s/chat/thread/{chatId}/member/{self.userId}").json())
 
 	def start_chat(self, userId: str | list | tuple, message: str, title: str | None = None, content: str | None = None, isGlobal: bool = False, publishToGlobal: bool = False):
 		"""
@@ -85,7 +89,7 @@ class GlobalChatsModule(BaseClass):
 		if isGlobal:data["eventSource"] = "GlobalComposeMenu"
 		return self.req.make_sync_request("POST", f"/g/s/chat/thread", data).json()["thread"]
 
-	def invite_to_chat(self, userId: str | list, chatId: str):
+	def invite_to_chat(self, userId: str | list, chatId: str) -> BaseObject:
 		"""
 		Invite a User or List of Users to a Chat.
 
@@ -95,12 +99,12 @@ class GlobalChatsModule(BaseClass):
 
 		"""
 		if not isinstance(userId, (str, list)):raise WrongType(type(userId))
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/member/invite", {
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/member/invite", {
 			"uids": list(userId) if isinstance(userId, str) else userId,
-		}).json()
+		}).json())
 
 
-	def kick(self, userId: str, chatId: str, allowRejoin: bool = True):
+	def kick(self, userId: str, chatId: str, allowRejoin: bool = True) -> BaseObject:
 		"""
 		Kick/ban user from/in chat.
 
@@ -110,7 +114,7 @@ class GlobalChatsModule(BaseClass):
 		- allowRejoin: bool = True
 			- if False, it will ban user in chat
 		"""
-		return self.req.make_sync_request("DELETE", f"/g/s/chat/thread/{chatId}/member/{userId}?allowRejoin={int(allowRejoin)}").json()
+		return BaseObject(self.req.make_sync_request("DELETE", f"/g/s/chat/thread/{chatId}/member/{userId}?allowRejoin={int(allowRejoin)}").json())
 
 	def get_chat_messages(self, chatId: str, size: int = 25, pageToken: str | None = None):
 		"""
@@ -121,9 +125,9 @@ class GlobalChatsModule(BaseClass):
 		- size : Size of the list.
 		- pageToken : Next Page Token.
 		"""
-		return self.req.make_sync_request("GET", f"/g/s/chat/thread/{chatId}/message?pagingType=t&size={size}{f'&pageToken={pageToken}' if pageToken else ''}").json()
+		return ChatMessages(self.req.make_sync_request("GET", f"/g/s/chat/thread/{chatId}/message?pagingType=t&size={size}{f'&pageToken={pageToken}' if pageToken else ''}").json())
 
-	def get_message_info(self, chatId: str, messageId: str):
+	def get_message_info(self, chatId: str, messageId: str) -> Message:
 		"""
 		Information of an Message from an Chat.
 
@@ -132,10 +136,10 @@ class GlobalChatsModule(BaseClass):
 		- messageId : ID of the Message.
 
 		"""
-		return self.req.make_sync_request("GET", f"/g/s/chat/thread/{chatId}/message/{messageId}").json()["message"]
+		return Message(self.req.make_sync_request("GET", f"/g/s/chat/thread/{chatId}/message/{messageId}").json())
 
 
-	def send_message(self, chatId: str, message: str | None = None, messageType: int = args.MessageTypes.Text, file: BinaryIO | None = None, replyTo: str | None = None, mentionUserIds: list | None = None, stickerId: str | None = None, embedId: str | None = None, embedType: int | None = None, embedLink: str | None = None, embedTitle: str | None = None, embedContent: str | None = None, embedImage: BinaryIO | None = None):
+	def send_message(self, chatId: str, message: str | None = None, messageType: int = args.MessageTypes.Text, file: BinaryIO | None = None, replyTo: str | None = None, mentionUserIds: list | None = None, stickerId: str | None = None, embedId: str | None = None, embedType: int | None = None, embedLink: str | None = None, embedTitle: str | None = None, embedContent: str | None = None, embedImage: BinaryIO | None = None) -> Message:
 		"""
 		Send a Message to a Chat.
 
@@ -205,9 +209,9 @@ class GlobalChatsModule(BaseClass):
 				data["mediaUhqEnabled"] = True
 			else: raise WrongType("file type not allowed.")
 			data["mediaUploadValue"] = b64encode(file.read()).decode()
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/message", data).json()
+		return Message(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/message", data).json())
 
-	def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str | None = None):
+	def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str | None = None) -> BaseObject:
 		"""
 		Delete a Message from a Chat.
 
@@ -222,11 +226,11 @@ class GlobalChatsModule(BaseClass):
 				"adminOpName": 102,
 			}
 			if reason:data["adminOpNote"] = {"content": reason}
-			return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/message/{messageId}/admin", data).json()
-		else:return self.req.make_sync_request("DELETE", f"/g/s/chat/thread/{chatId}/message/{messageId}").json()
+			return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/message/{messageId}/admin", data).json())
+		else:return BaseObject(self.req.make_sync_request("DELETE", f"/g/s/chat/thread/{chatId}/message/{messageId}").json())
 
 
-	def mark_as_read(self, chatId: str, messageId: str):
+	def mark_as_read(self, chatId: str, messageId: str) -> BaseObject:
 		"""
 		Mark a Message from a Chat as Read.
 
@@ -234,12 +238,12 @@ class GlobalChatsModule(BaseClass):
 		- messageId : ID of the Message.
 		- chatId : ID of the Chat.
 		"""
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/mark-as-read", {
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/mark-as-read", {
 			"messageId": messageId,
-		}).json()
+		}).json())
 
 
-	def transfer_host(self, chatId: str, userIds: list[str]):
+	def transfer_host(self, chatId: str, userIds: list[str]) -> BaseObject:
 		"""
 		transfer host from chat
 
@@ -251,10 +255,10 @@ class GlobalChatsModule(BaseClass):
 			"uidList": userIds,
 		}
 
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/transfer-organizer", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/transfer-organizer", data).json())
 	
 
-	def accept_host(self, chatId: str, requestId: str):
+	def accept_host(self, chatId: str, requestId: str) -> BaseObject:
 		"""
 		Accepting host in chat.
 
@@ -262,20 +266,20 @@ class GlobalChatsModule(BaseClass):
 		- chatId: id of the chat 
 		- requestId: host transfer request ID
 		"""
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept").json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept").json())
 
-	def delete_co_host(self, chatId: str, userId: str):
+	def delete_co_host(self, chatId: str, userId: str) -> BaseObject:
 		"""
 		Remove co-host from chat
 		**Parameters**:
 		- chatId: id of the chat 
 		- userId: id of the user 
 		"""
-		return self.req.make_sync_request("DELETE", f"/g/s/chat/thread/{chatId}/co-host/{userId}").json()
+		return BaseObject(self.req.make_sync_request("DELETE", f"/g/s/chat/thread/{chatId}/co-host/{userId}").json())
 
 
 
-	def edit_chat(self, chatId: str, title: str | None = None, icon: str | None = None, content: str | None = None, announcement: str | None = None, keywords: list | None = None, pinAnnouncement: bool | None = None, publishToGlobal: bool | None = None, fansOnly: bool | None = None):
+	def edit_chat(self, chatId: str, title: str | None = None, icon: str | None = None, content: str | None = None, announcement: str | None = None, keywords: list | None = None, pinAnnouncement: bool | None = None, publishToGlobal: bool | None = None, fansOnly: bool | None = None) -> BaseObject:
 		"""
 		edit chat settings
 
@@ -310,11 +314,11 @@ class GlobalChatsModule(BaseClass):
 		if publishToGlobal is not None:
 			data["publishToGlobal"] = 0 if publishToGlobal is True else 1
 
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}", data).json())
 
 
 
-	def do_not_disturb(self, chatId: str, doNotDisturb: bool = True):
+	def do_not_disturb(self, chatId: str, doNotDisturb: bool = True) -> BaseObject:
 		"""
 		change chat notifications
 
@@ -325,12 +329,12 @@ class GlobalChatsModule(BaseClass):
 		data = {
 			"alertOption": 2 if doNotDisturb else 1,
 		}
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/member/{self.userId}/alert", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/member/{self.userId}/alert", data).json())
 
 
 
 
-	def pin_chat(self, chatId: str, pin: bool = True):
+	def pin_chat(self, chatId: str, pin: bool = True) -> BaseObject:
 		"""
 		Pin chat
 
@@ -338,10 +342,10 @@ class GlobalChatsModule(BaseClass):
 		- chatId : id of the chat
 		- pin : If the Chat should Pinned or not.
 		"""
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/{'pin' if pin else 'unpin'}", {}).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/{'pin' if pin else 'unpin'}", {}).json())
 
 
-	def set_chat_background(self, chatId: str, backgroundImage: BinaryIO):
+	def set_chat_background(self, chatId: str, backgroundImage: BinaryIO) -> BaseObject:
 		"""
 		Change chat background
 
@@ -353,9 +357,9 @@ class GlobalChatsModule(BaseClass):
 		data = {
 			"media": [100, self.upload_media(backgroundImage).mediaValue, None]
 		}
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/member/{self.userId}/background", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/member/{self.userId}/background", data).json())
 	
-	def add_co_hosts(self, chatId: str, coHosts: list):
+	def add_co_hosts(self, chatId: str, coHosts: list) -> BaseObject:
 		"""
 		Add assistants to chat
 
@@ -367,9 +371,9 @@ class GlobalChatsModule(BaseClass):
 		data = {
 			"uidList": coHosts
 		}
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/co-host", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/co-host", data).json())
 
-	def chat_view_only(self, chatId: str, viewOnly: bool = False):
+	def chat_view_only(self, chatId: str, viewOnly: bool = False) -> BaseObject:
 		"""
 		set view-only mode
 
@@ -377,9 +381,9 @@ class GlobalChatsModule(BaseClass):
 		- chatId : id of the chat
 		- viewOnly : enable view only mode?
 		"""
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}").json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}").json())
 	
-	def member_can_invite_to_chat(self, chatId: str, canInvite: bool = True):
+	def member_can_invite_to_chat(self, chatId: str, canInvite: bool = True) -> BaseObject:
 		"""
 		permission to invite users to chat
 
@@ -387,9 +391,9 @@ class GlobalChatsModule(BaseClass):
 		- chatId : id of the chat
 		- canInvite : member can invite to chat ?.
 		"""
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}").json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}").json())
 
-	def member_can_chat_tip(self, chatId: str, canTip: bool = True):
+	def member_can_chat_tip(self, chatId: str, canTip: bool = True) -> BaseObject:
 		"""
 		permission to tip chat
 
@@ -397,11 +401,11 @@ class GlobalChatsModule(BaseClass):
 		- chatId : id of the chat
 		- canTip : if the Chat should be Tippable or not.
 		"""
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}").json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}").json())
 
 
 
-	def invite_to_vc(self, chatId: str, userId: str):
+	def invite_to_vc(self, chatId: str, userId: str) -> BaseObject:
 		"""
 		Invite a User to a Voice Chat
 
@@ -413,4 +417,4 @@ class GlobalChatsModule(BaseClass):
 			"uid": userId,
 		}
 
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/vvchat-presenter/invite",data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/vvchat-presenter/invite",data).json())

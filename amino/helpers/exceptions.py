@@ -25,6 +25,13 @@ class DorksAPIError(Exception):
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+class DeprecatedFunction(LibraryError):
+	"""
+	Features that have stopped working and/or need fixing.
+	"""
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+
 class UnknownError(LibraryError):
 	"""
 	Raised when the error code does not match anyone in the list.

@@ -138,7 +138,7 @@ def get_certs(userId: str | None):
 		log.debug("[dorks-api]: Getting credentials...")
 		try:
 			response=session.request("GET", f"{aminodorks_api}/signature/credentials/{userId}",headers=gen_headers)
-			return response.json()["credentials"]
+			return response.json().get("credentials")
 		except Exception as e:
 			raise DorksAPIError(e)
 
@@ -148,7 +148,7 @@ async def get_certs_a(userId: str | None):
 		log.debug("[dorks-api]: Getting credentials...")
 		try:
 			response=await asyncSession.request("GET", f"{aminodorks_api}/signature/credentials/{userId}",headers=gen_headers)
-			return (await response.json())["credentials"]
+			return (await response.json()).get("credentials")
 		except Exception as e:
 			raise DorksAPIError(e)
 
@@ -161,7 +161,7 @@ def new_sig(data: str, userId: str):
 		log.debug("[dorks-api]: Generate ecdsa signature...")
 		try:
 			response=session.request("POST", f"{aminodorks_api}/signature/ecdsa",headers=gen_headers, json=body)
-			return response.json()["ECDSA"]
+			return response.json().get("ECDSA")
 		except Exception as e:
 			raise DorksAPIError(e)
 
@@ -174,6 +174,6 @@ async def new_sig_a(data: str, userId: str):
 		log.debug("[dorks-api]: Generate ecdsa signature...")
 		try:
 			response=await asyncSession.request("POST", f"{aminodorks_api}/signature/ecdsa",headers=gen_headers, json=body)
-			return (await response.json())["ECDSA"]
+			return (await response.json()).get("ECDSA")
 		except Exception as e:
 			raise DorksAPIError(e)

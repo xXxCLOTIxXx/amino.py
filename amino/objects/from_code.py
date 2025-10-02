@@ -21,3 +21,13 @@ class FromCode(BaseObject):
         self.fullUrl = link_info.get("shareURLFullPath")
         self.comIdPost = link_info.get("ndcId")
         self.comId = self.comIdPost or community_info.get("ndcId")
+
+
+class LinkIdentify(BaseObject):
+    def __init__(self, data: dict):
+        super().__init__(data)
+
+        self.community: dict = data.get("community", {})
+        self.path: str = data.get("path", "")
+        self.isCurrentUserJoined: bool = data.get("isCurrentUserJoined", False)
+        self.invitationId: str = data.get("invitationId", "")

@@ -1,11 +1,11 @@
 from amino.api.base import BaseClass
-from amino import args
+from amino import args, BaseObject, WalletInfo, AminoMembershipInfo, AccountSubscription, WalletHistoryItem
 from amino import SpecifyType
 from uuid import uuid4
 
 class GlobalStoreModule(BaseClass):
 
-	def purchase(self, objectId: str, objectType: int = args.PurchaseTypes.Bubble, isAutoRenew: bool = False) -> dict:
+	def purchase(self, objectId: str, objectType: int = args.PurchaseTypes.Bubble, isAutoRenew: bool = False) -> BaseObject:
 		"""
 		Purchasing something from store
 
@@ -24,9 +24,9 @@ class GlobalStoreModule(BaseClass):
 			},
 		}
 
-		return self.req.make_sync_request("POST", f"/g/s/store/purchase", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/store/purchase", data).json())
 
-	def wallet_config(self, level: int) -> dict:
+	def wallet_config(self, level: int) -> BaseObject:
 		"""
 		Changes ads config
 
@@ -39,9 +39,9 @@ class GlobalStoreModule(BaseClass):
 			"adsLevel": level,
 		}
 	
-		return self.req.make_sync_request("POST", f"/g/s/wallet/ads/config", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/wallet/ads/config", data).json())
 
-	def get_subscriptions(self, start: int = 0, size: int = 25) -> list:
+	def get_subscriptions(self, start: int = 0, size: int = 25) -> AccountSubscription:
 		"""
 		Get Information about the account's Subscriptions.
 
@@ -49,22 +49,22 @@ class GlobalStoreModule(BaseClass):
 		- start : Where to start the list.
 		- size : Size of the list.
 		"""
-		return self.req.make_sync_request("GET", f"/g/s/store/subscription?objectType=122&start={start}&size={size}").json()["storeSubscriptionItemList"]
+		return AccountSubscription(self.req.make_sync_request("GET", f"/g/s/store/subscription?objectType=122&start={start}&size={size}").json())
 
-	def claim_coupon(self) -> dict:
+	def claim_coupon(self) -> BaseObject:
 		"""
 		Claim the New User Coupon available when a new account is created.
 		"""
-		return self.req.make_sync_request("GET", f"/g/s/coupon/new-user-coupon/claim").json()
+		return BaseObject(self.req.make_sync_request("GET", f"/g/s/coupon/new-user-coupon/claim").json())
 
-	def get_wallet_info(self)-> dict:
+	def get_wallet_info(self)-> WalletInfo:
 		"""
 		Get Information about the account's Wallet.
 		"""
-		return self.req.make_sync_request("GET", f"/g/s/wallet").json()["wallet"]
+		return WalletInfo(self.req.make_sync_request("GET", f"/g/s/wallet").json())
 
 
-	def get_wallet_history(self, start: int = 0, size: int = 25) -> list:
+	def get_wallet_history(self, start: int = 0, size: int = 25) -> list[WalletHistoryItem]:
 		"""
 		Get the Wallet's History Information.
 
@@ -72,9 +72,9 @@ class GlobalStoreModule(BaseClass):
 		- start : Where to start the list.
 		- size : Size of the list.
 		"""
-		return self.req.make_sync_request("GET", f"/g/s/wallet/coin/history?start={start}&size={size}").json()["coinHistoryList"]
+		return [WalletHistoryItem(x) for x in self.req.make_sync_request("GET", f"/g/s/wallet/coin/history?start={start}&size={size}").json()["coinHistoryList"]]
 
-	def send_coins(self, coins: int, blogId: str | None = None, chatId: str | None = None, objectId: str | None = None, transactionId: str | None = None) -> dict:
+	def send_coins(self, coins: int, blogId: str | None = None, chatId: str | None = None, objectId: str | None = None, transactionId: str | None = None) -> BaseObject:
 
 		"""
 		Sending coins.
@@ -105,11 +105,11 @@ class GlobalStoreModule(BaseClass):
 			url = f"/g/s/tipping"
 		else:raise SpecifyType
 
-		return self.req.make_sync_request("POST", url, data).json()
+		return BaseObject(self.req.make_sync_request("POST", url, data).json())
 	
 
-	def get_membership_info(self) -> dict:
+	def get_membership_info(self) -> AminoMembershipInfo:
 		"""
 		Get Information about your Amino+ Membership.
 		"""
-		return self.req.make_sync_request("GET", f"/g/s/membership?force=true").json()
+		return AminoMembershipInfo(self.req.make_sync_request("GET", f"/g/s/membership?force=true").json())

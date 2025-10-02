@@ -1,14 +1,14 @@
 from amino.api.base import BaseClass
 from amino import args, FromCode
 from amino import SpecifyType
-from amino import MediaObject
+from amino import MediaObject, BaseObject, LinkIdentify
 
 from typing import BinaryIO
 from mimetypes import guess_type
 
 class GlobalOtherModule(BaseClass):
 
-	def link_identify(self, code: str) -> dict:
+	def link_identify(self, code: str) -> LinkIdentify:
 		"""
 		Getting info about invite from code. 
 
@@ -16,7 +16,7 @@ class GlobalOtherModule(BaseClass):
 		- code: str
 			- *code* is thing *after* http://aminoapps.com/invite/
 		"""
-		return self.req.make_sync_request("GET", f"/g/s/community/link-identify?q=http%3A%2F%2Faminoapps.com%2Finvite%2F{code}").json()
+		return LinkIdentify(self.req.make_sync_request("GET", f"/g/s/community/link-identify?q=http%3A%2F%2Faminoapps.com%2Finvite%2F{code}").json())
 
 	def get_supported_languages(self) -> list[str]:
 		"""
@@ -51,7 +51,7 @@ class GlobalOtherModule(BaseClass):
 		"""
 		return FromCode(self.req.make_sync_request("GET", f"/g/s/link-resolution?q={link}").json())
 
-	def get_from_deviceid(self, deviceId: str) -> dict:
+	def get_from_deviceid(self, deviceId: str) -> str:
 		"""
 		Get the User ID from an Device ID.
 
@@ -60,7 +60,7 @@ class GlobalOtherModule(BaseClass):
 		"""
 		return self.req.make_sync_request("GET", f"/g/s/auid?deviceId={deviceId}").json()["auid"]
 
-	def flag(self, reason: str, flagType: int, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None, asGuest: bool = False):
+	def flag(self, reason: str, flagType: int, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None, asGuest: bool = False) -> BaseObject:
 		"""
 		Flag a User, Blog or Wiki.
 
@@ -86,7 +86,7 @@ class GlobalOtherModule(BaseClass):
 			data["objectId"] = wikiId
 			data["objectType"] = 2
 		else:raise SpecifyType
-		return self.req.make_sync_request("POST", f"/g/s/{'g-flag' if asGuest else 'flag'}", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/{'g-flag' if asGuest else 'flag'}", data).json())
 
 	def upload_media(self, file: BinaryIO, fileType: str | None = None) -> MediaObject:
 		"""

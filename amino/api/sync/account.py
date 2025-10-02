@@ -1,6 +1,6 @@
 from amino.api.base import BaseClass
 from amino.helpers.generator import req_time, timezone, sid_to_uid, get_certs
-from amino import SpecifyType, WrongType, AuthData, Account, MediaObject, args
+from amino import SpecifyType, WrongType, AuthData, Account, MediaObject, args, BaseObject, UserProfile
 
 from orjson import dumps
 from typing import BinaryIO
@@ -91,7 +91,7 @@ class AccountModule(BaseClass):
 		self.me = AuthData({"auid": self.userId, "sid": self.sid})
 		return self.me
 
-	def logout(self, client_type: int = args.ClientTypes.User) -> dict:
+	def logout(self, client_type: int = args.ClientTypes.User) -> BaseObject:
 		"""
 		Logout from an account.
 		"""
@@ -104,9 +104,9 @@ class AccountModule(BaseClass):
 		self.me = AuthData({})
 		if self.socket_enable:
 			self.ws_disconnect()
-		return result
+		return BaseObject(result)
 
-	def restore_account(self, email: str, password: str) -> dict:
+	def restore_account(self, email: str, password: str) -> BaseObject:
 		"""
 		Restore a deleted account.
 
@@ -114,13 +114,13 @@ class AccountModule(BaseClass):
 		- email : Email of the account.
 		- password : Password of the account.
 		"""
-		return self.req.make_sync_request("POST", "/g/s/account/delete-request/cancel", {
+		return BaseObject(self.req.make_sync_request("POST", "/g/s/account/delete-request/cancel", {
 			"secret": f"0 {password}",
 			"deviceID": self.deviceId,
 			"email": email,
-		}).json()
+		}).json())
 
-	def verify_account(self, email: str, code: str) -> dict:
+	def verify_account(self, email: str, code: str) -> BaseObject:
 		"""
 		Verify an account.
 
@@ -128,15 +128,15 @@ class AccountModule(BaseClass):
 		- email : Email of the account.
 		- code : Verification code.
 		"""
-		return self.req.make_sync_request("POST", "/g/s/auth/check-security-validation", {
+		return BaseObject(self.req.make_sync_request("POST", "/g/s/auth/check-security-validation", {
 			"validationContext": {
 				"type": 1,
 				"identity": email,
 				"data": {"code": code}},
 			"deviceID": self.deviceId,
-		}).json()
+		}).json())
 
-	def request_verify_code(self, email: str, resetPassword: bool = False) -> dict:
+	def request_verify_code(self, email: str, resetPassword: bool = False) -> BaseObject:
 		"""
 		Request an verification code to the targeted email.
 
@@ -153,9 +153,9 @@ class AccountModule(BaseClass):
 		if resetPassword is True:
 			data["level"] = 2
 			data["purpose"] = "reset-password"
-		return self.req.make_sync_request("POST", "/g/s/auth/request-security-validation", data).json()
+		return BaseObject(self.req.make_sync_request("POST", "/g/s/auth/request-security-validation", data).json())
 
-	def activate_account(self, email: str, code: str) -> dict:
+	def activate_account(self, email: str, code: str) -> BaseObject:
 		"""
 		Activate an account.
 
@@ -164,26 +164,26 @@ class AccountModule(BaseClass):
 		- code : Verification code.
 		"""
 		
-		return self.req.make_sync_request("POST", "/g/s/auth/activate-email", {
+		return BaseObject(self.req.make_sync_request("POST", "/g/s/auth/activate-email", {
 			"type": 1,
 			"identity": email,
 			"data": {"code": code},
 			"deviceID": self.deviceId,
-		}).json()
+		}).json())
 
-	def delete_account(self, password: str) -> dict:
+	def delete_account(self, password: str) -> BaseObject:
 		"""
 		Delete an account.
 
 		**Parameters**
 		- password: Password of the account.
 		"""
-		return self.req.make_sync_request("POST", "/g/s/account/delete-request", {
+		return BaseObject(self.req.make_sync_request("POST", "/g/s/account/delete-request", {
 			"deviceID": self.deviceId,
 			"secret": f"0 {password}",
-		}).json()
+		}).json())
 
-	def change_password(self, email: str, password: str, code: str) -> dict:
+	def change_password(self, email: str, password: str, code: str) -> BaseObject:
 		"""
 		Change password of an account.
 
@@ -195,7 +195,7 @@ class AccountModule(BaseClass):
 
 		"""
 		
-		return self.req.make_sync_request("POST", "/g/s/auth/reset-password", {
+		return BaseObject(self.req.make_sync_request("POST", "/g/s/auth/reset-password", {
 			"updateSecret": f"0 {password}",
 			"emailValidationContext": {
 				"data": {
@@ -208,10 +208,10 @@ class AccountModule(BaseClass):
 			},
 			"phoneNumberValidationContext": None,
 			"deviceID": self.deviceId,
-		}).json()
+		}).json())
 
 	#worked?
-	def change_email(self, password: str, old_email: str, old_code: str, new_email: str, new_code: str) -> dict:
+	def change_email(self, password: str, old_email: str, old_code: str, new_email: str, new_code: str) -> BaseObject:
 		"""
 		Change email of an account.
 
@@ -254,9 +254,9 @@ class AccountModule(BaseClass):
 			"clientCallbackURL": "narviiapp://default"
 		}
 
-		return self.req.make_sync_request("POST", f"/g/s/auth/update-email", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/auth/update-email", data).json())
 
-	def check_device(self, deviceId: str, locale: str = "en_US") -> dict:
+	def check_device(self, deviceId: str, locale: str = "en_US") -> BaseObject:
 		"""
 		Check if the Device ID is valid.
 
@@ -273,13 +273,13 @@ class AccountModule(BaseClass):
 			"locale": locale,
 		}
 
-		return self.req.make_sync_request("POST", f"/g/s/device", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/device", data).json())
 
-	def get_eventlog(self) -> dict:
+	def get_eventlog(self) -> BaseObject:
 		"""
 		Get eventlog
 		"""
-		return self.req.make_sync_request("GET", f"/g/s/eventlog/profile?language={self.language}").json()
+		return BaseObject(self.req.make_sync_request("GET", f"/g/s/eventlog/profile?language={self.language}").json())
 
 	def get_account_info(self) -> Account:
 		"""
@@ -287,7 +287,7 @@ class AccountModule(BaseClass):
 		"""
 		return Account(self.req.make_sync_request("GET", "/g/s/account").json())
 
-	def configure_profile(self, age: int, gender: int = args.Gender.non_binary) -> dict:
+	def configure_profile(self, age: int, gender: int = args.Gender.non_binary) -> BaseObject:
 		"""
 		Configure the settings of an account.
 
@@ -297,12 +297,12 @@ class AccountModule(BaseClass):
 			- ``Gender.male``, ``Gender.female`` or ``Gender.non_binary``
 		"""
 		if gender not in args.Gender.all:raise SpecifyType
-		return self.req.make_sync_request("POST", "/g/s/persona/profile/basic", {
+		return BaseObject(self.req.make_sync_request("POST", "/g/s/persona/profile/basic", {
 			"age": max(13, age),
 			"gender": gender,
-		}).json()	
+		}).json()	)
 
-	def activity_status(self, status: bool) -> dict:
+	def activity_status(self, status: bool) -> BaseObject:
 		"""
 		Sets your activity status to offline or online.
 
@@ -313,12 +313,12 @@ class AccountModule(BaseClass):
 		"""
 
 		if status not in (True, False): raise WrongType(status)
-		return self.req.make_sync_request("POST", f"/g/s/user-profile/{self.userId}/online-status", {
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/user-profile/{self.userId}/online-status", {
 			"onlineStatus": 1 if status is True else 2,
 			"duration": 86400,
-		}).json()
+		}).json())
 
-	def set_privacy_status(self, isAnonymous: bool | None = False, getNotifications: bool | None = False) -> dict:
+	def set_privacy_status(self, isAnonymous: bool | None = False, getNotifications: bool | None = False) -> BaseObject:
 
 		"""
 		Edit account's Privacy Status.
@@ -338,18 +338,18 @@ class AccountModule(BaseClass):
 			if getNotifications is True: data["privacyMode"] = 1
 		if not data:raise SpecifyType("Specify arguments.")
 
-		return self.req.make_sync_request("POST", f"/g/s/account/visit-settings", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/account/visit-settings", data).json())
 
-	def set_amino_id(self, aminoId: str) -> dict:
+	def set_amino_id(self, aminoId: str) -> BaseObject:
 		"""
 		Edit account's Amino ID.
 
 		**Parameters**
 			- aminoId : Amino ID of the Account.
 		"""
-		return self.req.make_sync_request("POST", f"/g/s/account/change-amino-id", {"aminoId": aminoId}).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/account/change-amino-id", {"aminoId": aminoId}).json())
 
-	def edit_profile(self, nickname: str | None = None, content: str | None = None, icon: BinaryIO | None = None, backgroundColor: str | None = None, backgroundImage: str | None = None, defaultBubbleId: str | None = None) -> dict:
+	def edit_profile(self, nickname: str | None = None, content: str | None = None, icon: BinaryIO | None = None, backgroundColor: str | None = None, backgroundImage: str | None = None, defaultBubbleId: str | None = None) -> UserProfile:
 		"""
 		Edit account's Profile.
 
@@ -384,5 +384,5 @@ class AccountModule(BaseClass):
 		if defaultBubbleId:
 			data["extensions"] = {"defaultBubbleId": defaultBubbleId}
 	
-		return self.req.make_sync_request("POST", f"/g/s/user-profile/{self.userId}", data).json()
+		return UserProfile(self.req.make_sync_request("POST", f"/g/s/user-profile/{self.userId}", data).json())
 

@@ -1,20 +1,16 @@
+from . import Message
+
 class Event:
 	"""
 		class with data about a new event
-		
 	"""
-	__slots__ = (
-		"data", "comId", "alertOption", "membershipStatus",
-		"actions", "target", "params", "threadType", "duration",
-		"id", "message"
-	)
 
 	def __init__(self, data: dict):
-		self.data = data
+		self.data = data or {}
 		params = data.get("params", {})
-		self.message: dict = data.get("message", {})
+		self.message: Message = Message(data)
 		
-		self.comId: str | None = data.get("ndcId")
+		self.comId = data.get("ndcId")
 		self.alertOption = data.get("alertOption")
 		self.membershipStatus = data.get("membershipStatus")
 		self.actions = data.get("actions")

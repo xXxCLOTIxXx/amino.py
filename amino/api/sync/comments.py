@@ -1,11 +1,11 @@
 from amino.api.base import BaseClass
 from amino import SpecifyType, WrongType
-from amino import args
+from amino import args, BaseObject, Comment
 
 class GlobalCommentsModule(BaseClass):
 	
 
-	def get_wall_comments(self, userId: str, sorting: str = args.Sorting.Newest, start: int = 0, size: int = 25) -> list:
+	def get_wall_comments(self, userId: str, sorting: str = args.Sorting.Newest, start: int = 0, size: int = 25) -> list[Comment]:
 		"""
 		List of Wall Comments of an User.
 
@@ -16,10 +16,10 @@ class GlobalCommentsModule(BaseClass):
 		- sorting: Type of sorting of received objects
 		"""
 		if sorting not in args.Sorting.all:raise WrongType(sorting)
-		return self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}/g-comment?sort={sorting}&start={start}&size={size}").json()["commentList"]
-	
+		result =  self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}/g-comment?sort={sorting}&start={start}&size={size}").json()["commentList"]
+		return [Comment(x) for x in result]
 
-	def get_blog_comments(self, blogId: str | None = None, wikiId: str | None = None, quizId: str | None = None, fileId: str | None = None, sorting: str = args.Sorting.Newest, start: int = 0, size: int = 25):
+	def get_blog_comments(self, blogId: str | None = None, wikiId: str | None = None, quizId: str | None = None, fileId: str | None = None, sorting: str = args.Sorting.Newest, start: int = 0, size: int = 25) -> list[Comment]:
 		"""
 		Getting blog info.
 
@@ -40,10 +40,10 @@ class GlobalCommentsModule(BaseClass):
 		elif wikiId:url = f"/g/s/item/{wikiId}/comment"
 		elif fileId:url = f"/g/s/shared-folder/files/{fileId}/comment"
 		else:raise SpecifyType
-		return self.req.make_sync_request("GET", f"{url}?sort={sorting}&start={start}&size={size}").json()["commentList"]
+		result = self.req.make_sync_request("GET", f"{url}?sort={sorting}&start={start}&size={size}").json()["commentList"]
+		return [Comment(x) for x in result]
 
-
-	def comment(self, message: str, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None, replyTo: str | None = None, stickerId: str | None = None):
+	def comment(self, message: str, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None, replyTo: str | None = None, stickerId: str | None = None) -> BaseObject:
 		"""
 		Comment on a User's Wall, Blog or Wiki.
 
@@ -79,10 +79,10 @@ class GlobalCommentsModule(BaseClass):
 			url = f"/g/s/item/{wikiId}/g-comment"
 		else: raise SpecifyType
 
-		return self.req.make_sync_request("POST", url, data).json()
+		return BaseObject(self.req.make_sync_request("POST", url, data).json())
 
 
-	def delete_comment(self, commentId: str, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None):
+	def delete_comment(self, commentId: str, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None) -> BaseObject:
 		"""
 		Delete a Comment on a User's Wall, Blog or Wiki.
 
@@ -97,10 +97,10 @@ class GlobalCommentsModule(BaseClass):
 		elif wikiId:url = f"/g/s/item/{wikiId}/g-comment/{commentId}"
 		else:raise SpecifyType
 
-		return self.req.make_sync_request("DELETE", url).json()
+		return BaseObject(self.req.make_sync_request("DELETE", url).json())
 
 
-	def like_comment(self, commentId: str, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None):
+	def like_comment(self, commentId: str, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None) -> BaseObject:
 		"""
 		Like a Comment on a User's Wall, Blog or Wiki.
 
@@ -125,9 +125,9 @@ class GlobalCommentsModule(BaseClass):
 			url = f"/g/s/item/{wikiId}/comment/{commentId}/g-vote?cv=1.2&value=1"
 		else: raise SpecifyType
 
-		return self.req.make_sync_request("POST", url, data).json()
+		return BaseObject(self.req.make_sync_request("POST", url, data).json())
 
-	def unlike_comment(self, commentId: str, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None):
+	def unlike_comment(self, commentId: str, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None) -> BaseObject:
 		"""
 		Remove a like from a Comment on a User's Wall, Blog or Wiki.
 
@@ -142,4 +142,4 @@ class GlobalCommentsModule(BaseClass):
 		elif wikiId:url = f"/g/s/item/{wikiId}/comment/{commentId}/g-vote?eventSource=PostDetailView"
 		else:raise SpecifyType
 		
-		return self.req.make_sync_request("DELETE", url).json()
+		return BaseObject(self.req.make_sync_request("DELETE", url).json())

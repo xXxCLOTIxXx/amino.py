@@ -1,5 +1,5 @@
 from amino.api.base import BaseClass
-from amino import WrongType
+from amino import WrongType, DeprecatedFunction
 
 from amino import UserProfile, BaseObject
 
@@ -14,7 +14,7 @@ class GlobalUsersModule(BaseClass):
 		"""
 		return UserProfile(self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}").json())
 
-	def get_user_following(self, userId: str, start: int = 0, size: int = 25) -> UserProfile:
+	def get_user_following(self, userId: str, start: int = 0, size: int = 25) -> list[UserProfile]:
 		"""
 		List of Users that the User is Following.
 
@@ -23,9 +23,10 @@ class GlobalUsersModule(BaseClass):
 		- start : Where to start the list.
 		- size : Size of the list.
 		"""
-		return UserProfile(self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}/joined?start={start}&size={size}").json())
+		result = self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}/joined?start={start}&size={size}").json()
+		return [UserProfile({"userProfile": x}) for x in result["userProfileList"]]
 
-	def get_user_followers(self, userId: str, start: int = 0, size: int = 25) -> UserProfile:
+	def get_user_followers(self, userId: str, start: int = 0, size: int = 25) -> list[UserProfile]:
 		"""
 		List of Users that are Following the User.
 
@@ -34,10 +35,10 @@ class GlobalUsersModule(BaseClass):
 		- start : Where to start the list.
 		- size : Size of the list.
 		"""
-		return UserProfile(self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}/member?start={start}&size={size}").json())
+		result = self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}/member?start={start}&size={size}").json()
+		return [UserProfile({"userProfile": x}) for x in result["userProfileList"]]
 
-
-	def get_user_visitors(self, userId: str, start: int = 0, size: int = 25) -> BaseObject:
+	def get_user_visitors(self, userId: str, start: int = 0, size: int = 25) -> list[UserProfile]:
 		"""
 		List of Users that Visited the User.
 
@@ -46,7 +47,8 @@ class GlobalUsersModule(BaseClass):
 		- start : Where to start the list.
 		- size : Size of the list.
 		"""
-		return BaseObject(self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}/visitors?start={start}&size={size}").json())
+		result = self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}/visitors?start={start}&size={size}").json()
+		return [UserProfile({"userProfile": x}) for x in result["visitors"]]
 
 
 	def visit(self, userId: str) -> BaseObject:
@@ -60,6 +62,7 @@ class GlobalUsersModule(BaseClass):
 
 
 	def get_blocked_users(self, start: int = 0, size: int = 25) -> BaseObject:
+		#TODO OBJ
 		"""
 		List of Users that the User Blocked.
 
@@ -67,9 +70,12 @@ class GlobalUsersModule(BaseClass):
 		- start : Where to start the list.
 		- size : Size of the list.
 		"""
-		return BaseObject(self.req.make_sync_request("GET", f"/g/s/block?start={start}&size={size}").json())#["userProfileList"]
+
+		result = self.req.make_sync_request("GET", f"/g/s/block?start={start}&size={size}").json()
+		return  BaseObject(result)
 
 	def get_blocker_users(self, start: int = 0, size: int = 25) -> BaseObject:
+		#TODO OBJ
 		"""
 		Get a list of users who have blocked you
 
@@ -86,6 +92,7 @@ class GlobalUsersModule(BaseClass):
 		**Parameters**
 		- userId : ID of the User or List of IDs of the Users.
 		"""
+		raise DeprecatedFunction
 		if isinstance(userId, str):
 			return BaseObject(self.req.make_sync_request("POST", f"/g/s/user-profile/{userId}/member").json())
 		elif isinstance(userId, list):
@@ -109,6 +116,7 @@ class GlobalUsersModule(BaseClass):
 		**Parameters**
 		- userId : ID of the User.
 		"""
+		raise DeprecatedFunction
 		return BaseObject(self.req.make_sync_request("POST", f"/g/s/block/{userId}").json())
 	
 	def unblock(self, userId: str) -> BaseObject:
@@ -120,7 +128,7 @@ class GlobalUsersModule(BaseClass):
 		"""
 		return BaseObject(self.req.make_sync_request("DELETE", f"/g/s/block/{userId}").json())
 
-	def get_all_users(self, start: int = 0, size: int = 25) -> BaseObject:
+	def get_all_users(self, start: int = 0, size: int = 25) -> list[UserProfile]:
 		"""
 		Get list of users of Amino.
 
@@ -128,5 +136,5 @@ class GlobalUsersModule(BaseClass):
 		- start : Where to start the list.
 		- size : Size of the list.
 		"""
-		return BaseObject(self.req.make_sync_request("GET", f"/g/s/user-profile?type=recent&start={start}&size={size}").json())
+		return [UserProfile({"userProfile": x}) for x in self.req.make_sync_request("GET", f"/g/s/user-profile?type=recent&start={start}&size={size}").json()["userProfileList"]]
 	
