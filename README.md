@@ -14,12 +14,13 @@
 <a href="https://github.com/xXxCLOTIxXx/xXxCLOTIxXx/blob/main/contacts.md"><img src="https://img.shields.io/badge/Контакты-Contacts-F79B1F?style=for-the-badge&logoColor=0077b6&color=0077b6" alt="contacts" /></a>
 		<hr>
 		<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=28&duration=2000&pause=2000&color=3DACF7&random=false&width=200&repeat=false&lines=Installation" alt="Installation"/>
-	<p>Git</p>
+	</div>
+	<h1 align="center">Git</h1>
 	
 ```bash
 pip install git+https://github.com/xXxCLOTIxXx/amino.py.git
 ```
-<p>pypi</p>
+<h1 align="center">pypi</h1>
 
 ```bash
 pip install amino.api.py
@@ -32,6 +33,9 @@ pip install amino.api.py
 ```python
 import amino
 
+service_key = "" #get from telegram bot @aminodorks_bot
+amino.set_dorksapi_key(service_key) #to generate a new signature 
+
 client = amino.Client()
 client.login(email='email', password='password')
 ```
@@ -40,24 +44,32 @@ client.login(email='email', password='password')
 ```python
 import amino
 
-client = amino.Client()
-client.login(email='email', password='password')
-print(f"LOGIN: OK.")
+deviceId = None
+service_key = "" #get from telegram bot @aminodorks_bot
+
+amino.set_dorksapi_key(service_key) #to generate a new signature 
+client = amino.Client(deviceId=deviceId, socket_daemon=True)
 
 
-@client.event(amino.arguments.wsEvent.on_text_message)
-def text_msg(data: amino.objects.Event):
-    if data.comId is None or data.message.author.uid == client.userId: return
+
+@client.event(amino.args.wsEvent.on_text_message)
+def text_msg(data: amino.Event):
+    if data.comId is None or data.message.author.userId == client.userId: return
     print(f"New message: {data.message.content}")
     try:
-        com_client = amino.CommunityClient(client.profile, data.comId)
+        com_client = amino.SubClient(client, data.comId)
         if data.message.content.lower().split(" ")[0] == "ping":
-            com_client.send_message(data.message.threadId, "Pong!", replyTo=data.message.messageId)
+            com_client.send_message(data.message.chatId, "Pong!")
         elif data.message.content.lower().split(" ")[0] == "pong":
-            com_client.send_message(data.message.threadId, "Ping!", replyTo=data.message.messageId)
+            com_client.send_message(data.message.chatId, "Ping!")
     except Exception as e:
         print(e)
 
+
+if __name__ == "__main__":
+    client.login(email='email', password='password')
+    print(f"LOGIN: OK.")
+    client.wait_socket()
 
 ```
 
