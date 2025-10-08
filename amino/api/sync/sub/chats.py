@@ -12,38 +12,44 @@ class CommunityChatsModule(BaseClass):
 	comId: str | int | None
 	def upload_media(self, file: BinaryIO, fileType: str | None = None) -> MediaObject: ...
 
-	def start_chat(self, userId: str | list | tuple, message: str, title: str | None = None, content: str | None = None, isGlobal: bool = False, publishToGlobal: bool = False, comId: str | int | None = None) -> Chat:
-		"""
-		Start an Chat with an User or List of Users.
-
-		**Parameters**
-		- userId : ID of the User or List of User IDs.
-		- message : Starting Message.
-		- title : Title of Group Chat.
-		- content : Content of Group Chat.
-		- isGlobal : If Group Chat is Global.
-		- publishToGlobal : If Group Chat should show in Global.
-		"""
-		if isinstance(userId, str): userIds = [userId]
-		elif isinstance(userId, list): userIds = userId
-		elif isinstance(userId, tuple): userIds = userId
-		else: raise WrongType(f"userId: {type(userId)}")
-
+	def start_public_chat(self, title: str, icon: BinaryIO, content: str = "", userId: str | list | tuple = [], publishToGlobal: bool = False, comId: str | int | None = None) -> Chat:
+		if isinstance(userId, str): userId = [userId]
 		data = {
 			"title": title,
-			"inviteeUids": userIds,
-			"initialMessageContent": message,
-			"content": content
+			"content": content,
+			"type": args.ChatTypes.Public,
+			"publishToGlobal": 1 if publishToGlobal is True else 0,
+			"eventSource": "GlobalComposeMenu",
+			"inviteeUids": userId,
+			"uid": self.userId,
+			"icon": self.upload_media(icon).mediaValue
 		}
 
-		if isGlobal is True:
-			data["type"] = 2
-			data["timestamp"] = "GlobalComposeMenu"
-		else:data["type"] = 0
-		if publishToGlobal is True:data["publishToGlobal"] = 1
-		else:data["publishToGlobal"] = 0
+		return Chat(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread", data).json())
+
+	def start_private_chat(self, userId: str, message: str | None = None, comId: str | int | None = None) -> Chat:
+
+		data = {
+			"type": args.ChatTypes.Private,
+			"inviteeUids": [userId],
+			"uid": self.userId,
+		}
+		if message:data["initialMessageContent"] = message
 
 		return Chat(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread", data).json())
+
+	def start_group_chat(self, userIds: list | tuple, message: str | None = None, comId: str | int | None = None) -> Chat:
+
+		data = {
+			"type": args.ChatTypes.Group,
+			"inviteeUids": userIds,
+			"uid": self.userId,
+		}
+		if message:data["initialMessageContent"] = message
+
+		return Chat(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread", data).json())
+
+
 
 	def invite_to_chat(self, userId: str | list | tuple, chatId: str, comId: str | int | None = None) -> BaseObject:
 		"""
@@ -125,7 +131,8 @@ class CommunityChatsModule(BaseClass):
 		
 		data = {
 			"type": messageType,
-			"content": message
+			"content": message,
+			"clientRefId": clientrefid()
 		}
 		if	any(obj is None for obj in [embedId, embedType, embedLink, embedTitle, embedContent, embedImage]):
 			attachedObject = {}

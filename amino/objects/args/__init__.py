@@ -29,3 +29,5 @@ from .ws_event_types import (
     notification_types,
     wsEvent
 )
+
+from .chat_types import ChatTypes

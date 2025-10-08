@@ -47,12 +47,12 @@ __title__ = 'amino.py.api'
 __author__ = 'Xsarz'
 __license__ = 'MIT'
 __copyright__ = f'Copyright 2025-2026 {__author__}'
-__version__ = '0.9.3'
+__version__ = '0.9.8.2hf'
 __telegram__ = 'https://t.me/DXsarzHUB'
 
 
 from requests import get
-try:__newest__ = __version__#get("https://pypi.org/pypi/amino.py.api/json").json().get("info", {}).get("version", __version__)
+try:__newest__ = get("https://pypi.org/pypi/amino.py.api/json").json().get("info", {}).get("version", __version__)
 except:__newest__=__version__
 if __version__ != __newest__:
 	log.warning(f'{__title__} made by {__author__} [{__telegram__}].\nPlease update the library. Your version: {__version__}  A new version: {__newest__}')

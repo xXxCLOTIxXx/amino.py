@@ -13,10 +13,10 @@ from time import sleep
 
 class Client(
 	Socket,
+	GlobalOtherModule,
 	AccountModule,
 	GlobalUsersModule,
 	GlobalCommunitiesModule,
-	GlobalOtherModule,
 	GlobalStoreModule,
 	GlobalCommentsModule,
 	GlobalChatsModule,
@@ -61,7 +61,7 @@ class Client(
 				f"SID={self.sid!r})")
 
 
-	def set_default_comId(self, comId: str | None, aminoId: str | None = None):
+	def set_default_comId(self, comId: str | int | None, aminoId: str | None = None):
 		"""
 		To avoid manually passing comId to each method when working with communities, you can set it as a default value at the class level.
 		This will allow all methods to automatically use self.comId.
@@ -72,7 +72,7 @@ class Client(
 		elif aminoId:
 			link = f"http://aminoapps.com/c/{aminoId}"
 			self.community.comId = self.get_from_link(link).comId
-		self.community.comId = None
+		else:self.community.comId = None
 
 
 	def wait_socket(self):

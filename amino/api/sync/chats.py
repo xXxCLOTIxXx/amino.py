@@ -63,31 +63,29 @@ class GlobalChatsModule(BaseClass):
 		"""
 		return BaseObject(self.req.make_sync_request("DELETE", f"/g/s/chat/thread/{chatId}/member/{self.userId}").json())
 
-	def start_chat(self, userId: str | list | tuple, message: str, title: str | None = None, content: str | None = None, isGlobal: bool = False, publishToGlobal: bool = False) -> Chat:
-		"""
-		Start an Chat with an User or List of Users.
 
-		**Parameters**
-		- userId : ID of the User or List of User IDs.
-		- message : Starting Message.
-		- title : Title of Group Chat.
-		- content : Content of Group Chat.
-		- isGlobal : If Group Chat is Global.
-		- publishToGlobal : If Group Chat should show in Global.
-		"""
-		if isinstance(userId, (str, list, tuple)):
-			userIds = list(userId) if isinstance(userId, str) else userId
-		else:raise WrongType(type(userId))
+	def start_private_chat(self, userId: str, message: str | None = None) -> Chat:
+
 		data = {
-			"title": title,
-			"inviteeUids": userIds,
-			"initialMessageContent": message,
-			"content": content,
-			"type": 2 if isGlobal else 0,
-			"publishToGlobal": 1 if publishToGlobal else 0,
+			"type": args.ChatTypes.Private,
+			"inviteeUids": [userId],
+			"uid": self.userId,
 		}
-		if isGlobal:data["eventSource"] = "GlobalComposeMenu"
-		return Chat(self.req.make_sync_request("POST", f"/g/s/chat/thread", data).json()["thread"])
+		if message:data["initialMessageContent"] = message
+
+		return Chat(self.req.make_sync_request("POST",  f"/g/s/chat/thread", data).json())
+
+	def start_group_chat(self, userIds: list | tuple, message: str | None = None) -> Chat:
+
+		data = {
+			"type": args.ChatTypes.Group,
+			"inviteeUids": userIds,
+			"uid": self.userId,
+		}
+		if message:data["initialMessageContent"] = message
+
+		return Chat(self.req.make_sync_request("POST",  f"/g/s/chat/thread", data).json())
+
 
 	def invite_to_chat(self, userId: str | list, chatId: str) -> BaseObject:
 		"""

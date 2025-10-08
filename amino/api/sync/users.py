@@ -51,18 +51,17 @@ class GlobalUsersModule(BaseClass):
 		return [UserProfile(x) for x in result["visitors"]]
 
 
-	def visit(self, userId: str) -> BaseObject:
+	def visit(self, userId: str) -> UserProfile:
 		"""
 		Visit an User.
 
 		**Parameters**
 		- userId : ID of the User.
 		"""
-		return BaseObject(self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}?action=visit").json())
+		return UserProfile(self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}?action=visit").json())
 
 
-	def get_blocked_users(self, start: int = 0, size: int = 25) -> BaseObject:
-		#TODO OBJ
+	def get_blocked_users(self, start: int = 0, size: int = 25) -> list[UserProfile]:
 		"""
 		List of Users that the User Blocked.
 
@@ -71,11 +70,10 @@ class GlobalUsersModule(BaseClass):
 		- size : Size of the list.
 		"""
 
-		result = self.req.make_sync_request("GET", f"/g/s/block?start={start}&size={size}").json()
-		return  BaseObject(result)
+		result = self.req.make_sync_request("GET", f"/g/s/block?start={start}&size={size}").json()["userProfileList"]
+		return  [UserProfile(x) for x in result]
 
-	def get_blocker_users(self, start: int = 0, size: int = 25) -> BaseObject:
-		#TODO OBJ
+	def get_blocker_users(self, start: int = 0, size: int = 25) -> list[str]:
 		"""
 		Get a list of users who have blocked you
 
@@ -83,22 +81,18 @@ class GlobalUsersModule(BaseClass):
 		- start : Where to start the list.
 		- size : Size of the list.
 		"""
-		return BaseObject(self.req.make_sync_request("GET", f"/g/s/block/full-list?start={start}&size={size}").json())#["blockerUidList"]
+		return self.req.make_sync_request("GET", f"/g/s/block/full-list?start={start}&size={size}").json()["blockerUidList"]
 
-	def follow(self, userId: str | list) -> BaseObject:
+	def follow(self, userId: str) -> BaseObject:
+		#TODO FIX
 		"""
-		Follow an User or Multiple Users.
+		Follow an User
 
 		**Parameters**
-		- userId : ID of the User or List of IDs of the Users.
+		- userId : ID of the User
 		"""
 		raise DeprecatedFunction
-		if isinstance(userId, str):
-			return BaseObject(self.req.make_sync_request("POST", f"/g/s/user-profile/{userId}/member").json())
-		elif isinstance(userId, list):
-			data = {"targetUidList": userId}
-			return BaseObject(self.req.make_sync_request("POST", f"/g/s/user-profile/{self.userId}/joined", data).json())
-		else: raise WrongType
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/user-profile/{userId}/member").json())
 
 	def unfollow(self, userId: str) -> BaseObject:
 		"""
@@ -110,6 +104,7 @@ class GlobalUsersModule(BaseClass):
 		return BaseObject(self.req.make_sync_request("DELETE", f"/g/s/user-profile/{userId}/member/{self.userId}").json())
 
 	def block(self, userId: str) -> BaseObject:
+		#TODO FIX
 		"""
 		Block an User.
 
