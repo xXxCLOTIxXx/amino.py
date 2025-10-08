@@ -1,5 +1,5 @@
 from amino.api.base import BaseClass
-from amino import Community, UserProfile, BaseObject
+from amino import Community, UserProfile, BaseObject, DeprecatedFunction
 
 
 class GlobalCommunitiesModule(BaseClass):
@@ -44,7 +44,7 @@ class GlobalCommunitiesModule(BaseClass):
 		- aminoId : Amino ID of the Community.
 		"""
 		result = self.req.make_sync_request("GET", f"/g/s/search/amino-id-and-link?q={aminoId}").json()
-		return [Community({"community": x}) for x in result.get("resultList", [])]
+		return [Community(x) for x in result.get("resultList", [])]
 
 	def join_community(self, comId: int, invitationId: str | None = None) -> BaseObject:
 		"""
@@ -54,6 +54,7 @@ class GlobalCommunitiesModule(BaseClass):
 		- comId : ID of the Community.
 		- invitationId : ID of the Invitation Code.
 		"""
+		raise DeprecatedFunction
 		
 		data = {}
 		if invitationId:data["invitationId"] = invitationId
@@ -103,7 +104,7 @@ class GlobalCommunitiesModule(BaseClass):
 		- userId : ID of the User.
 		"""
 		result = self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}/linked-community").json()["linkedCommunityList"]
-		return [Community({"community": x}) for x in result]
+		return [Community(x) for x in result]
 
 	def get_unlinked_communities(self, userId: str) -> list[Community]:
 		"""
@@ -113,7 +114,7 @@ class GlobalCommunitiesModule(BaseClass):
 		- userId : ID of the User.
 		"""
 		result = self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}/linked-community").json()["unlinkedCommunityList"]
-		return [Community({"community": x}) for x in result]
+		return [Community(x) for x in result]
 
 	def reorder_linked_communities(self, comIds: list) -> BaseObject:
 		"""
@@ -151,4 +152,4 @@ class GlobalCommunitiesModule(BaseClass):
 		- size : Size of the list.
 		"""
 		result =self.req.make_sync_request("GET", f"/g/s/topic/0/feed/community?language={language}&type=web-explore&categoryKey=recommendation&size={size}&pagingType=t").json()
-		return [Community({"community": x}) for x in result.get("communityList", [])]
+		return [Community(x) for x in result.get("communityList", [])]

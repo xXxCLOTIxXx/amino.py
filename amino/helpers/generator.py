@@ -132,27 +132,27 @@ def sid_to_client_type(SID: str) -> int:
 
 
 
-def get_certs(userId: str | None):
+def get_certs(userId: str | None, proxy: dict[str,str] | None = None):
 	if userId is None: return None
 	with Session() as session:
 		log.debug("[dorks-api]: Getting credentials...")
 		try:
-			response=session.request("GET", f"{aminodorks_api}/signature/credentials/{userId}",headers=gen_headers)
+			response=session.request("GET", f"{aminodorks_api}/signature/credentials/{userId}",headers=gen_headers, proxies=proxy)
 			return response.json().get("credentials")
 		except Exception as e:
 			raise DorksAPIError(e)
 
-async def get_certs_a(userId: str | None):
+async def get_certs_a(userId: str | None, proxy: str):
 	if userId is None: return None
 	async with ClientSession() as asyncSession:
 		log.debug("[dorks-api]: Getting credentials...")
 		try:
-			response=await asyncSession.request("GET", f"{aminodorks_api}/signature/credentials/{userId}",headers=gen_headers)
+			response=await asyncSession.request("GET", f"{aminodorks_api}/signature/credentials/{userId}",headers=gen_headers, proxy=proxy)
 			return (await response.json()).get("credentials")
 		except Exception as e:
 			raise DorksAPIError(e)
 
-def new_sig(data: str, userId: str):
+def new_sig(data: str, userId: str, proxy: dict[str, str] | None = None):
 	body={
 		"payload":data,
 		"userId":userId
@@ -160,12 +160,12 @@ def new_sig(data: str, userId: str):
 	with Session() as session:
 		log.debug("[dorks-api]: Generate ecdsa signature...")
 		try:
-			response=session.request("POST", f"{aminodorks_api}/signature/ecdsa",headers=gen_headers, json=body)
+			response=session.request("POST", f"{aminodorks_api}/signature/ecdsa",headers=gen_headers, json=body, proxies=proxy)
 			return response.json().get("ECDSA")
 		except Exception as e:
 			raise DorksAPIError(e)
 
-async def new_sig_a(data: str, userId: str):
+async def new_sig_a(data: str, userId: str, proxy: str | None = None):
 	body={
 		"payload":data,
 		"userId":userId
@@ -173,7 +173,7 @@ async def new_sig_a(data: str, userId: str):
 	async with ClientSession() as asyncSession:
 		log.debug("[dorks-api]: Generate ecdsa signature...")
 		try:
-			response=await asyncSession.request("POST", f"{aminodorks_api}/signature/ecdsa",headers=gen_headers, json=body)
+			response=await asyncSession.request("POST", f"{aminodorks_api}/signature/ecdsa",headers=gen_headers, json=body, proxy=proxy)
 			return (await response.json()).get("ECDSA")
 		except Exception as e:
 			raise DorksAPIError(e)

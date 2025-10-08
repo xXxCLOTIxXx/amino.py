@@ -2,32 +2,32 @@ from amino.api.base import BaseClass
 from amino import args
 
 class CommunityNotificationsModule(BaseClass):
-	comId: str | None
+	comId: str | int | None
 
 	
-	def check_notifications(self):
+	def check_notifications(self, comId: str | int | None = None):
 		"""
 		Checking notifications as read.
 		"""
-		return self.req.make_sync_request("POST",  f"/x{self.comId}/s/notification/checked").json()
+		return self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/notification/checked").json()
 
-	def delete_notification(self, notificationId: str):
+	def delete_notification(self, notificationId: str, comId: str | int | None = None):
 		"""
 		Delete notification.
 
 		**Parameters**:
 		- notificationId: id of the notification
 		"""
-		return self.req.make_sync_request("DELETE",  f"/x{self.comId}/s/notification/{notificationId}").json()
+		return self.req.make_sync_request("DELETE",  f"/x{comId or self.comId}/s/notification/{notificationId}").json()
 
-	def clear_notifications(self):
+	def clear_notifications(self, comId: str | int | None = None):
 		"""
 		Remove all notifications.
 		"""
-		return self.req.make_sync_request("DELETE",  f"/x{self.comId}/s/notification").json()
+		return self.req.make_sync_request("DELETE",  f"/x{comId or self.comId}/s/notification").json()
 	
 
-	def get_notifications(self, start: int = 0, size: int = 25):
+	def get_notifications(self, start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Getting notifications in community.
 
@@ -37,9 +37,9 @@ class CommunityNotificationsModule(BaseClass):
 		- size: int = 25
 			- how much you want to get
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/notification?pagingType=t&start={start}&size={size}").json()["notificationList"]
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/notification?pagingType=t&start={start}&size={size}").json()["notificationList"]
 
-	def get_notices(self, start: int = 0, size: int = 25):
+	def get_notices(self, start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Getting notices in community.
 
@@ -51,10 +51,10 @@ class CommunityNotificationsModule(BaseClass):
 		- size: int = 25
 			- how much you want to get
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/notice?type=usersV2&status=1&start={start}&size={size}").json()["noticeList"]
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/notice?type=usersV2&status=1&start={start}&size={size}").json()["noticeList"]
 
 
-	def promotion(self, noticeId: str, type: str = args.PromotionTypes.Accept):
+	def promotion(self, noticeId: str, type: str = args.PromotionTypes.Accept, comId: str | int | None = None):
 		"""
 		Accept or deny promotion to curator/leader/agent.
 
@@ -63,4 +63,4 @@ class CommunityNotificationsModule(BaseClass):
 			- get from `get_notices`
 		- type: accept or deny
 		"""
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/notice/{noticeId}/{type}").json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/notice/{noticeId}/{type}").json()

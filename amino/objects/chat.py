@@ -5,10 +5,9 @@ class Message(BaseObject):
     def __init__(self, data: dict):
         super().__init__(data)
 
-        if data: data = data.get("message", {})
-        self.data = data or {}
+        if data.get("message") is not None: data = data.get("message", {})
 
-        self.author: UserProfile = UserProfile({"userProfile":self.data.get("author", {})})
+        self.author: UserProfile = UserProfile(self.data.get("author", {}))
 
         extensions = self.data.get("extensions", {})
         self.extensions = extensions
@@ -48,8 +47,6 @@ class Sticker(BaseObject):
     def __init__(self, data: dict):
         super().__init__(data)
 
-        self.data = data or {}
-
         self.collection: StickerCollection = StickerCollection(self.data.get("stickerCollectionSummary", {}))
 
         self.status = self.data.get("status")
@@ -71,15 +68,13 @@ class StickerCollection(BaseObject):
     def __init__(self, data: dict):
         super().__init__(data)
 
-        self.data = data or {}
-
-        self.author: UserProfile = UserProfile({"userProfile":self.data.get("author", {})})
+        self.author: UserProfile = UserProfile(self.data.get("author", {}))
 
         extensions = self.data.get("extensions", {})
         self.extensions = extensions
 
-        self.originalAuthor: UserProfile = UserProfile({"userProfile":extensions.get("originalAuthor", {})})
-        self.originalCommunity: Community = Community({"community":extensions.get("originalCommunity", {})})
+        self.originalAuthor: UserProfile = UserProfile(extensions.get("originalAuthor", {}))
+        self.originalCommunity: Community = Community(extensions.get("originalCommunity", {}))
 
         self.status = self.data.get("status")
         self.collectionType = self.data.get("collectionType")
@@ -113,12 +108,10 @@ class StickerCollection(BaseObject):
 class Chat(BaseObject):
     def __init__(self, data: dict):
         super().__init__(data)
-        if data:
-            data = data.get("thread", {})
-        self.data = data or {}
+        if data.get("thread") is not None: data = data.get("thread", {})
 
-        self.author: UserProfile = UserProfile({"userProfile":self.data.get("author", {})})
-        self.membersSummary: list[UserProfile] = [UserProfile({"userProfile":x}) for x in self.data.get("membersSummary", [])]
+        self.author: UserProfile = UserProfile(self.data.get("author", {}))
+        self.membersSummary: list[UserProfile] = [UserProfile(x) for x in self.data.get("membersSummary", [])]
 
         self.userAddedTopicList = self.data.get("userAddedTopicList")
         self.membersQuota = self.data.get("membersQuota")
@@ -180,6 +173,6 @@ class ChatMessages:
     def __init__(self, data: dict):
         self.data = data
 
-        self.messageList: list[Message] = [Message({"message": x}) for x in data.get("messageList", [])]
+        self.messageList: list[Message] = [Message(x) for x in data.get("messageList", [])]
         self.nextPageToken = data.get("paging", {}).get("nextPageToken")
         self.prevPageToken = data.get("paging", {}).get("prevPageToken")

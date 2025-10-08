@@ -24,7 +24,7 @@ class GlobalUsersModule(BaseClass):
 		- size : Size of the list.
 		"""
 		result = self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}/joined?start={start}&size={size}").json()
-		return [UserProfile({"userProfile": x}) for x in result["userProfileList"]]
+		return [UserProfile(x) for x in result["userProfileList"]]
 
 	def get_user_followers(self, userId: str, start: int = 0, size: int = 25) -> list[UserProfile]:
 		"""
@@ -36,7 +36,7 @@ class GlobalUsersModule(BaseClass):
 		- size : Size of the list.
 		"""
 		result = self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}/member?start={start}&size={size}").json()
-		return [UserProfile({"userProfile": x}) for x in result["userProfileList"]]
+		return [UserProfile(x) for x in result["userProfileList"]]
 
 	def get_user_visitors(self, userId: str, start: int = 0, size: int = 25) -> list[UserProfile]:
 		"""
@@ -48,7 +48,7 @@ class GlobalUsersModule(BaseClass):
 		- size : Size of the list.
 		"""
 		result = self.req.make_sync_request("GET", f"/g/s/user-profile/{userId}/visitors?start={start}&size={size}").json()
-		return [UserProfile({"userProfile": x}) for x in result["visitors"]]
+		return [UserProfile(x) for x in result["visitors"]]
 
 
 	def visit(self, userId: str) -> BaseObject:
@@ -136,5 +136,5 @@ class GlobalUsersModule(BaseClass):
 		- start : Where to start the list.
 		- size : Size of the list.
 		"""
-		return [UserProfile({"userProfile": x}) for x in self.req.make_sync_request("GET", f"/g/s/user-profile?type=recent&start={start}&size={size}").json()["userProfileList"]]
+		return [UserProfile(x) for x in self.req.make_sync_request("GET", f"/g/s/user-profile?type=recent&start={start}&size={size}").json()["userProfileList"]]
 	

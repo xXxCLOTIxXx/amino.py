@@ -20,7 +20,7 @@ class GlobalChatsModule(BaseClass):
 
 		"""
 		result = self.req.make_sync_request("GET", f"/g/s/chat/thread?type=joined-me&start={start}&size={size}").json()["threadList"]
-		return [Chat({"thread":x}) for x in result]
+		return [Chat(x) for x in result]
 
 
 	def get_chat(self, chatId: str) -> Chat:
@@ -42,7 +42,7 @@ class GlobalChatsModule(BaseClass):
 		- size : Size of the list.
 		"""
 		result = self.req.make_sync_request("GET", f"/g/s/chat/thread/{chatId}/member?cv=1.2&type=default&start={start}&size={size}").json()["memberList"]
-		return [UserProfile({"userProfile": x}) for x in result]
+		return [UserProfile(x) for x in result]
 
 
 	def join_chat(self, chatId: str) -> BaseObject:
@@ -63,7 +63,7 @@ class GlobalChatsModule(BaseClass):
 		"""
 		return BaseObject(self.req.make_sync_request("DELETE", f"/g/s/chat/thread/{chatId}/member/{self.userId}").json())
 
-	def start_chat(self, userId: str | list | tuple, message: str, title: str | None = None, content: str | None = None, isGlobal: bool = False, publishToGlobal: bool = False):
+	def start_chat(self, userId: str | list | tuple, message: str, title: str | None = None, content: str | None = None, isGlobal: bool = False, publishToGlobal: bool = False) -> Chat:
 		"""
 		Start an Chat with an User or List of Users.
 
@@ -87,7 +87,7 @@ class GlobalChatsModule(BaseClass):
 			"publishToGlobal": 1 if publishToGlobal else 0,
 		}
 		if isGlobal:data["eventSource"] = "GlobalComposeMenu"
-		return self.req.make_sync_request("POST", f"/g/s/chat/thread", data).json()["thread"]
+		return Chat(self.req.make_sync_request("POST", f"/g/s/chat/thread", data).json()["thread"])
 
 	def invite_to_chat(self, userId: str | list, chatId: str) -> BaseObject:
 		"""

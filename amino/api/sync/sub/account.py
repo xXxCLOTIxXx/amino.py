@@ -1,13 +1,13 @@
 from amino.api.base import BaseClass
-from amino import MediaObject
+from amino import MediaObject, BaseObject
 from typing import BinaryIO
 
 class CommunityAccountModule(BaseClass):
-	comId: str | None
+	comId: str | int | None
 	def upload_media(self, file: BinaryIO, fileType: str | None = None) -> MediaObject: ...
 
 
-	def edit_profile(self, nickname: str | None = None, content: str | None = None, icon: BinaryIO | None = None, chatRequestPrivilege: str | None = None, imageList: list | None = None, captionList: list | None = None, backgroundImage: str | None = None, backgroundColor: str | None = None, titles: list | None = None, colors: list | None = None, defaultBubbleId: str | None = None):
+	def edit_profile(self, nickname: str | None = None, content: str | None = None, icon: BinaryIO | None = None, chatRequestPrivilege: str | None = None, imageList: list | None = None, captionList: list | None = None, backgroundImage: str | None = None, backgroundColor: str | None = None, titles: list | None = None, colors: list | None = None, defaultBubbleId: str | None = None, comId: str | int | None = None) -> BaseObject:
 		"""
 		Edit account's Profile.
 
@@ -52,11 +52,11 @@ class CommunityAccountModule(BaseClass):
 				tlt.append({"title": titles, "color": colors})
 			data["extensions"] = {"customTitles": tlt}
 
-		return self.req.make_sync_request("POST",  f"/x{self.comId}/s/user-profile/{self.userId}", data).json()
+		return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/user-profile/{self.userId}", data).json())
 
 
 
-	def activity_status(self, status: bool):
+	def activity_status(self, status: bool, comId: str | int | None = None) -> BaseObject:
 		"""
 		Sets your activity status to offline or online.
 
@@ -70,4 +70,4 @@ class CommunityAccountModule(BaseClass):
 			"duration": 86400
 		}
 
-		return self.req.make_sync_request("POST",  f"/x{self.comId}/s/user-profile/{self.userId}/online-status", data).json()
+		return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/user-profile/{self.userId}/online-status", data).json())

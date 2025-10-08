@@ -1,10 +1,11 @@
 from amino.api.base import BaseClass
 from amino import SpecifyType, WrongType, args
 
-class CommunityModeratorModule(BaseClass):
-	comId: str | None
 
-	def create_wiki_category(self, title: str, parentCategoryId: str, content: str | None = None, media: list | None = None):
+class CommunityModeratorModule(BaseClass):
+	comId: str | int | None
+
+	def create_wiki_category(self, title: str, parentCategoryId: str, content: str | None = None, media: list | None = None, comId: str | int | None = None):
 		"""
 		Create wiki category.
 
@@ -22,9 +23,9 @@ class CommunityModeratorModule(BaseClass):
 			"mediaList": media,
 			"parentCategoryId": parentCategoryId,
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/item-category", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/item-category", data).json()
 		
-	def create_shared_folder(self,title: str):
+	def create_shared_folder(self,title: str, comId: str | int | None = None):
 		"""
 		Create shared folder.
 
@@ -32,9 +33,9 @@ class CommunityModeratorModule(BaseClass):
 		- title: folder title
 		"""
 		data = { "title": title }
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/shared-folder/folders", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/shared-folder/folders", data).json()
 
-	def submit_to_wiki(self, wikiId: str, message: str):
+	def submit_to_wiki(self, wikiId: str, message: str, comId: str | int | None = None):
 		"""
 		Submit wiki to curator review.
 
@@ -47,9 +48,9 @@ class CommunityModeratorModule(BaseClass):
 			"message": message,
 			"itemId": wikiId
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/knowledge-base-request", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/knowledge-base-request", data).json()
 
-	def accept_wiki_request(self, requestId: str, destinationCategoryIdList: list):
+	def accept_wiki_request(self, requestId: str, destinationCategoryIdList: list, comId: str | int | None = None):
 		"""
 		Accept wiki.
 
@@ -62,9 +63,9 @@ class CommunityModeratorModule(BaseClass):
 			"actionType": "create"
 		}
 
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/knowledge-base-request/{requestId}/approve", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/knowledge-base-request/{requestId}/approve", data).json()
 
-	def reject_wiki_request(self, requestId: str):
+	def reject_wiki_request(self, requestId: str, comId: str | int | None = None):
 		"""
 		Reject wiki.
 
@@ -72,9 +73,9 @@ class CommunityModeratorModule(BaseClass):
 		- requestId: request Id
 		"""
 		data = {}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/knowledge-base-request/{requestId}/reject", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/knowledge-base-request/{requestId}/reject", data).json()
 
-	def get_wiki_submissions(self, start: int = 0, size: int = 25):
+	def get_wiki_submissions(self, start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Get wiki submissions to be approved.
 
@@ -84,11 +85,11 @@ class CommunityModeratorModule(BaseClass):
 		- size: int = 25
 			- how much you want to get
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/knowledge-base-request?type=all&start={start}&size={size}").json()["knowledgeBaseRequestList"]
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/knowledge-base-request?type=all&start={start}&size={size}").json()["knowledgeBaseRequestList"]
 
 
 
-	def moderation_history(self, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None, quizId: str | None = None, fileId: str | None = None, size: int = 25):
+	def moderation_history(self, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None, quizId: str | None = None, fileId: str | None = None, size: int = 25, comId: str | int | None = None):
 		"""
 		Getting moderation history of object.
 
@@ -113,13 +114,13 @@ class CommunityModeratorModule(BaseClass):
 
 		for key, value in object_types.items():
 			if value['id']:
-				url = f"/x{self.comId}/s/admin/operation?objectId={value['id']}&objectType={value['type']}&pagingType=t&size={size}"
+				url = f"/x{comId or self.comId}/s/admin/operation?objectId={value['id']}&objectType={value['type']}&pagingType=t&size={size}"
 				break
 		else:
-			url = f"/x{self.comId}/s/admin/operation?pagingType=t&size={size}"
+			url = f"/x{comId or self.comId}/s/admin/operation?pagingType=t&size={size}"
 		return self.req.make_sync_request("GET", url).json()["adminLogList"]
 
-	def feature(self, days: int = args.FeatureDays.ONE_DAY, userId: str | None = None, chatId: str | None = None, blogId: str | None = None, wikiId: str | None = None):
+	def feature(self, days: int = args.FeatureDays.ONE_DAY, userId: str | None = None, chatId: str | None = None, blogId: str | None = None, wikiId: str | None = None, comId: str | int | None = None):
 		"""
 		Feature object.
 
@@ -154,21 +155,21 @@ class CommunityModeratorModule(BaseClass):
 
 		if userId:
 			data["adminOpValue"] = {"featuredType": 4}
-			url = f"/x{self.comId}/s/user-profile/{userId}/admin"
+			url = f"/x{comId or self.comId}/s/user-profile/{userId}/admin"
 		elif blogId:
 			data["adminOpValue"] = {"featuredType": 1}
-			url = f"/x{self.comId}/s/blog/{blogId}/admin"
+			url = f"/x{comId or self.comId}/s/blog/{blogId}/admin"
 		elif wikiId:
 			data["adminOpValue"] = {"featuredType": 1}
-			url = f"/x{self.comId}/s/item/{wikiId}/admin"
+			url = f"/x{comId or self.comId}/s/item/{wikiId}/admin"
 		elif chatId:
 			data["adminOpValue"] = {"featuredType": 5}
-			url = f"/x{self.comId}/s/chat/thread/{chatId}/admin"
+			url = f"/x{comId or self.comId}/s/chat/thread/{chatId}/admin"
 		else: raise SpecifyType
 
 		return self.req.make_sync_request("POST", url, data).json()
 
-	def unfeature(self, userId: str | None = None, chatId: str | None = None, blogId: str | None = None, wikiId: str | None = None):
+	def unfeature(self, userId: str | None = None, chatId: str | None = None, blogId: str | None = None, wikiId: str | None = None, comId: str | int | None = None):
 		"""
 		Unfeature object.
 
@@ -185,18 +186,18 @@ class CommunityModeratorModule(BaseClass):
 		}
 
 		if userId:
-			url = f"/x{self.comId}/s/user-profile/{userId}/admin"
+			url = f"/x{comId or self.comId}/s/user-profile/{userId}/admin"
 		elif blogId:
-			url = f"/x{self.comId}/s/blog/{blogId}/admin"
+			url = f"/x{comId or self.comId}/s/blog/{blogId}/admin"
 		elif wikiId:
-			url = f"/x{self.comId}/s/item/{wikiId}/admin"
+			url = f"/x{comId or self.comId}/s/item/{wikiId}/admin"
 		elif chatId:
-			url = f"/x{self.comId}/s/chat/thread/{chatId}/admin"
+			url = f"/x{comId or self.comId}/s/chat/thread/{chatId}/admin"
 		else: raise SpecifyType
 
 		return self.req.make_sync_request("POST", url, data).json()
 
-	def hide(self, userId: str | None = None, chatId: str | None = None, blogId: str | None = None, wikiId: str | None = None, quizId: str | None = None, fileId: str | None = None, reason: str | None = None):
+	def hide(self, userId: str | None = None, chatId: str | None = None, blogId: str | None = None, wikiId: str | None = None, quizId: str | None = None, fileId: str | None = None, reason: str | None = None, comId: str | int | None = None):
 		"""
 		Hide object.
 
@@ -221,22 +222,22 @@ class CommunityModeratorModule(BaseClass):
 
 		if userId:
 			data["adminOpName"] = 18
-			url = f"/x{self.comId}/s/user-profile/{userId}/admin"
+			url = f"/x{comId or self.comId}/s/user-profile/{userId}/admin"
 		elif blogId:
-			url = f"/x{self.comId}/s/blog/{blogId}/admin"
+			url = f"/x{comId or self.comId}/s/blog/{blogId}/admin"
 		elif quizId:
-			url = f"/x{self.comId}/s/blog/{quizId}/admin"
+			url = f"/x{comId or self.comId}/s/blog/{quizId}/admin"
 		elif wikiId:
-			url = f"/x{self.comId}/s/item/{wikiId}/admin"
+			url = f"/x{comId or self.comId}/s/item/{wikiId}/admin"
 		elif chatId:
-			url = f"/x{self.comId}/s/chat/thread/{chatId}/admin"
+			url = f"/x{comId or self.comId}/s/chat/thread/{chatId}/admin"
 		elif fileId:
-			url = f"/x{self.comId}/s/shared-folder/files/{fileId}/admin"
+			url = f"/x{comId or self.comId}/s/shared-folder/files/{fileId}/admin"
 		else: raise SpecifyType
 
 		return self.req.make_sync_request("POST", url, data).json()
 
-	def unhide(self, userId: str | None = None, chatId: str | None = None, blogId: str | None = None, wikiId: str | None = None, quizId: str | None = None, fileId: str | None = None, reason: str | None = None):
+	def unhide(self, userId: str | None = None, chatId: str | None = None, blogId: str | None = None, wikiId: str | None = None, quizId: str | None = None, fileId: str | None = None, reason: str | None = None, comId: str | int | None = None):
 		"""
 		unhide object.
 
@@ -261,22 +262,22 @@ class CommunityModeratorModule(BaseClass):
 
 		if userId:
 			data["adminOpName"] = 19
-			url = f"/x{self.comId}/s/user-profile/{userId}/admin"
+			url = f"/x{comId or self.comId}/s/user-profile/{userId}/admin"
 		elif blogId:
-			url = f"/x{self.comId}/s/blog/{blogId}/admin"
+			url = f"/x{comId or self.comId}/s/blog/{blogId}/admin"
 		elif quizId:
-			url = f"/x{self.comId}/s/blog/{quizId}/admin"
+			url = f"/x{comId or self.comId}/s/blog/{quizId}/admin"
 		elif wikiId:
-			url = f"/x{self.comId}/s/item/{wikiId}/admin"
+			url = f"/x{comId or self.comId}/s/item/{wikiId}/admin"
 		elif chatId:
-			url = f"/x{self.comId}/s/chat/thread/{chatId}/admin"
+			url = f"/x{comId or self.comId}/s/chat/thread/{chatId}/admin"
 		elif fileId:
-			url = f"/x{self.comId}/s/shared-folder/files/{fileId}/admin"
+			url = f"/x{comId or self.comId}/s/shared-folder/files/{fileId}/admin"
 		else: raise SpecifyType
 
 		return self.req.make_sync_request("POST", url, data).json()
 
-	def edit_titles(self, userId: str, titles: list[dict]):
+	def edit_titles(self, userId: str, titles: list[dict], comId: str | int | None = None):
 		"""
 		Edit user's titles.
 
@@ -306,10 +307,10 @@ class CommunityModeratorModule(BaseClass):
 			}
 		}
 
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/user-profile/{userId}/admin", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/user-profile/{userId}/admin", data).json()
 
 	
-	def warn(self, userId: str, reason: str | None = None):
+	def warn(self, userId: str, reason: str | None = None, comId: str | int | None = None):
 		"""
 		Give a warn to user.
 
@@ -330,23 +331,23 @@ class CommunityModeratorModule(BaseClass):
 			"noticeType": 7
 		}
 
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/notice", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/notice", data).json()
 
 
-	def get_strike_templates(self):
+	def get_strike_templates(self, comId: str | int | None = None):
 		"""
 		get strike templates
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/notice/message-template/strike").json()
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/notice/message-template/strike").json()
 
-	def get_warn_templates(self):
+	def get_warn_templates(self, comId: str | int | None = None):
 		"""
 		get warn templates
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/notice/message-template/warning").json()
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/notice/message-template/warning").json()
 
 
-	def strike(self, userId: str, time: int = args.StrikeTime.ONE_HOUR, title: str | None = None, reason: str | None = None):
+	def strike(self, userId: str, time: int = args.StrikeTime.ONE_HOUR, title: str | None = None, reason: str | None = None, comId: str | int | None = None):
 		"""
 		Give a strike (warn + read only mode) to user.
 
@@ -385,9 +386,9 @@ class CommunityModeratorModule(BaseClass):
 			"adminOpNote": {},
 			"noticeType": 4
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/notice", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/notice", data).json()
 
-	def ban(self, userId: str, reason: str | None = None, banType: int | None = None):
+	def ban(self, userId: str, reason: str | None = None, banType: int | None = None, comId: str | int | None = None):
 		"""
 		Ban user.
 
@@ -402,9 +403,9 @@ class CommunityModeratorModule(BaseClass):
 				"content": reason if reason else "No reason provided. (powered by amino.api)"
 			}
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/user-profile/{userId}/ban", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/user-profile/{userId}/ban", data).json()
 
-	def unban(self, userId: str, reason: str | None = None):
+	def unban(self, userId: str, reason: str | None = None, comId: str | int | None = None):
 		"""
 		Unban user.
 
@@ -418,9 +419,9 @@ class CommunityModeratorModule(BaseClass):
 			}
 		}
 
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/user-profile/{userId}/unban", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/user-profile/{userId}/unban", data).json()
 
-	def reorder_featured_users(self, userIds: list[str]):
+	def reorder_featured_users(self, userIds: list[str], comId: str | int | None = None):
 		"""
 		Reorder featured users.
 
@@ -428,9 +429,9 @@ class CommunityModeratorModule(BaseClass):
 		- userIds: list with user id's 
 		"""
 		data = { "uidList": userIds }
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/user-profile/featured/reorder", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/user-profile/featured/reorder", data).json()
 
-	def get_hidden_blogs(self, start: int = 0, size: int = 25):
+	def get_hidden_blogs(self, start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Get hidden blogs.
 
@@ -440,10 +441,10 @@ class CommunityModeratorModule(BaseClass):
 		- size: int = 25
 			- how much you want to get
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/feed/blog-disabled?start={start}&size={size}").json()["blogList"]
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/feed/blog-disabled?start={start}&size={size}").json()["blogList"]
 	
 
-	def get_featured_users(self, start: int = 0, size: int = 25):
+	def get_featured_users(self, start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Get featured users.
 
@@ -453,18 +454,18 @@ class CommunityModeratorModule(BaseClass):
 		- size: int = 25
 			- how much you want to get
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/user-profile?type=featured&start={start}&size={size}").json()
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/user-profile?type=featured&start={start}&size={size}").json()
 
-	def review_quiz_questions(self, quizId: str):
+	def review_quiz_questions(self, quizId: str, comId: str | int | None = None):
 		"""
 		Review quiz questions.
 
 		**Parameters**
 		- quizId: quiz Id
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/blog/{quizId}?action=review").json()["blog"]["quizQuestionList"]
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/blog/{quizId}?action=review").json()["blog"]["quizQuestionList"]
 
-	def get_recent_quiz(self, start: int = 0, size: int = 25):
+	def get_recent_quiz(self, start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Get recent quizes.
 
@@ -474,9 +475,9 @@ class CommunityModeratorModule(BaseClass):
 		- size: int = 25
 			- how much you want to get
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/blog?type=quizzes-recent&start={start}&size={size}").json()["blogList"]
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/blog?type=quizzes-recent&start={start}&size={size}").json()["blogList"]
 
-	def get_trending_quiz(self, start: int = 0, size: int = 25):
+	def get_trending_quiz(self, start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Get tranding quizes.
 
@@ -486,9 +487,9 @@ class CommunityModeratorModule(BaseClass):
 		- size: int = 25
 			- how much you want to get
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/feed/quiz-trending?start={start}&size={size}").json()["blogList"]
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/feed/quiz-trending?start={start}&size={size}").json()["blogList"]
 
-	def get_best_quiz(self, start: int = 0, size: int = 25):
+	def get_best_quiz(self, start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Get the best quizes ever.
 
@@ -498,11 +499,11 @@ class CommunityModeratorModule(BaseClass):
 		- size: int = 25
 			- how much you want to get
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/feed/quiz-best-quizzes?start={start}&size={size}").json()["blogList"]
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/feed/quiz-best-quizzes?start={start}&size={size}").json()["blogList"]
 
 
 
-	def add_poll_option(self, blogId: str, question: str):
+	def add_poll_option(self, blogId: str, question: str, comId: str | int | None = None):
 		"""
 		Add poll option.
 
@@ -516,4 +517,4 @@ class CommunityModeratorModule(BaseClass):
 			"title": question,
 			"type": 0
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/blog/{blogId}/poll/option", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/blog/{blogId}/poll/option", data).json()

@@ -5,11 +5,10 @@ class Blog(BaseObject):
     def __init__(self, data: dict):
         super().__init__(data)
 
-        if data:data=data.get("blog", {})
-        self.data = data or {}
+        if data.get("blog"): self.data = data.get("blog", {})
 
         author_data = self.data.get("author", {})
-        self.author: UserProfile = UserProfile({"userProfile":author_data})
+        self.author: UserProfile = UserProfile(author_data)
 
         quiz_data = self.data.get("quizQuestionList", {})
         self.quizQuestionList: list[QuizQuestion] = [QuizQuestion(x) for x in quiz_data]
@@ -68,7 +67,7 @@ class Wiki(BaseObject):
     def __init__(self, data: dict):
         super().__init__(data)
 
-        self.data = data or {}
+        if data.get("item"): self.data = data.get("item", {})
 
         self.author = UserProfile(self.data.get("author", {}))
 

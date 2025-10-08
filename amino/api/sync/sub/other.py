@@ -5,9 +5,9 @@ from amino.helpers.generator import timezone
 from uuid import uuid4
 
 class CommunityOtherModule(BaseClass):
-	comId: str | None
+	comId: str | int | None
 
-	def check_in(self, tz: int | None = None):
+	def check_in(self, tz: int | None = None, comId: str | int | None = None):
 		"""
 		Check in community.
 
@@ -15,11 +15,11 @@ class CommunityOtherModule(BaseClass):
 		- tz: time zone
 			- better dont touch
 		"""
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/check-in", { "timezone": tz if tz else timezone()}).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/check-in", { "timezone": tz if tz else timezone()}).json()
 
 
 
-	def get_invite_codes(self, status: str = "normal", start: int = 0, size: int = 25):
+	def get_invite_codes(self, status: str = "normal", start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Get invite codes of community. If you have rights, of course.
 
@@ -31,9 +31,9 @@ class CommunityOtherModule(BaseClass):
 		- size: int = 25
 			- how much you want to get
 		"""
-		return self.req.make_sync_request("GET", f"/g/s-x{self.comId}/community/invitation?status={status}&start={start}&size={size}").json()["communityInvitationList"]
+		return self.req.make_sync_request("GET", f"/g/s-x{comId or self.comId}/community/invitation?status={status}&start={start}&size={size}").json()["communityInvitationList"]
 
-	def generate_invite_code(self, duration: int = 0, force: bool = True):
+	def generate_invite_code(self, duration: int = 0, force: bool = True, comId: str | int | None = None):
 		"""
 		Generate invite code for community. If you have rights, of course.
 
@@ -48,9 +48,9 @@ class CommunityOtherModule(BaseClass):
 			"duration": duration,
 			"force": force
 		}
-		return self.req.make_sync_request("POST", f"/g/s-x{self.comId}/community/invitation", data).json()["communityInvitation"]
+		return self.req.make_sync_request("POST", f"/g/s-x{comId or self.comId}/community/invitation", data).json()["communityInvitation"]
 
-	def delete_invite_code(self, inviteId: str):
+	def delete_invite_code(self, inviteId: str, comId: str | int | None = None):
 		"""
 		Delete invite code from community. If you have rights, of course.
 
@@ -59,10 +59,10 @@ class CommunityOtherModule(BaseClass):
 			- its NOT invite code
 			- yes, you can get it. using function `get_invite_codes`
 		"""
-		return self.req.make_sync_request("DELETE", f"/g/s-x{self.comId}/community/invitation/{inviteId}").json()
+		return self.req.make_sync_request("DELETE", f"/g/s-x{comId or self.comId}/community/invitation/{inviteId}").json()
 
 
-	def repair_check_in(self, repair_method: str = args.RepairMethod.Coins):
+	def repair_check_in(self, repair_method: str = args.RepairMethod.Coins, comId: str | int | None = None):
 		"""
 		Repairing check in streak.
 
@@ -76,10 +76,10 @@ class CommunityOtherModule(BaseClass):
 			"repairMethod": repair_method
 		}
 
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/check-in/repair", data)
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/check-in/repair", data)
 
 
-	def lottery(self, tz: int | None = None):
+	def lottery(self, tz: int | None = None, comId: str | int | None = None):
 		"""
 		Testing your luck in lottery. Once a day, of course.
 
@@ -87,10 +87,10 @@ class CommunityOtherModule(BaseClass):
 		- tz: int 
 			- better dont touch
 		"""
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/check-in/lottery", { "timezone": tz if tz else timezone()}).json()["lotteryLog"]
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/check-in/lottery", { "timezone": tz if tz else timezone()}).json()["lotteryLog"]
 
 
-	def send_active_obj(self, startTime: int | None = None, endTime: int | None = None, tz: int | None = None, timers: list | None = None):
+	def send_active_obj(self, startTime: int | None = None, endTime: int | None = None, tz: int | None = None, timers: list | None = None, comId: str | int | None = None):
 		"""
 		Sending mintues to Amino servers.
 
@@ -110,10 +110,10 @@ class CommunityOtherModule(BaseClass):
 		}
 		if timers: data["userActiveTimeChunkList"] = timers
 
-		return self.req.make_sync_request("POST",  f"/x{self.comId}/s/community/stats/user-active-time", data).json()
+		return self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/community/stats/user-active-time", data).json()
 
 
-	def send_coins(self, coins: int, blogId: str | None = None, chatId: str | None = None, objectId: str | None = None, transactionId: str | None = None):
+	def send_coins(self, coins: int, blogId: str | None = None, chatId: str | None = None, objectId: str | None = None, transactionId: str | None = None, comId: str | int | None = None):
 		"""
 		Sending coins.
 
@@ -129,17 +129,17 @@ class CommunityOtherModule(BaseClass):
 			"tippingContext": {"transactionId": transactionId if transactionId else uuid4()}
 		}
 
-		if blogId is not None: url = f"/x{self.comId}/s/blog/{blogId}/tipping"
-		elif chatId is not None: url = f"/x{self.comId}/s/chat/thread/{chatId}/tipping"
+		if blogId is not None: url = f"/x{comId or self.comId}/s/blog/{blogId}/tipping"
+		elif chatId is not None: url = f"/x{comId or self.comId}/s/chat/thread/{chatId}/tipping"
 		elif objectId is not None:
 			data["objectId"] = objectId
 			data["objectType"] = 2
-			url = f"/x{self.comId}/s/tipping"
+			url = f"/x{comId or self.comId}/s/tipping"
 		else: raise SpecifyType
 
 		return self.req.make_sync_request("POST", url, data).json()
 
-	def thank_tip(self, chatId: str, userId: str):
+	def thank_tip(self, chatId: str, userId: str, comId: str | int | None = None):
 		"""
 		Thank you for the coins
 
@@ -147,10 +147,10 @@ class CommunityOtherModule(BaseClass):
 		- chatId : ID of the Blog.
 		- userId : ID of the Chat.
 		"""
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/tipping/tipped-users/{userId}/thank").json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/tipping/tipped-users/{userId}/thank").json()
 
 
-	def flag(self, reason: str, flagType: int, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None, asGuest: bool = False):
+	def flag(self, reason: str, flagType: int, userId: str | None = None, blogId: str | None = None, wikiId: str | None = None, asGuest: bool = False, comId: str | int | None = None):
 		"""
 		Flag a User, Blog or Wiki.
 
@@ -178,11 +178,11 @@ class CommunityOtherModule(BaseClass):
 			data["objectType"] = 2
 		else: raise SpecifyType
 
-		return self.req.make_sync_request("POST",  f"/x{self.comId}/s/{'g-flag' if asGuest else 'flag'}", data).json()
+		return self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/{'g-flag' if asGuest else 'flag'}", data).json()
 
 
 
-	def get_leaderboard_info(self, type: int = args.LeaderboardTypes.Day, start: int = 0, size: int = 25):
+	def get_leaderboard_info(self, type: int = args.LeaderboardTypes.Day, start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Recieve all your users from leaderboard.
 
@@ -192,13 +192,13 @@ class CommunityOtherModule(BaseClass):
 		- size : Size of the list.
 		"""
 		if type not in args.LeaderboardTypes.all:raise WrongType(f"LeaderboardTypes.all: {type} not in {args.LeaderboardTypes.all}")
-		url = f"/g/s-x{self.comId}/community/leaderboard?rankingType={type}&start={start}"
+		url = f"/g/s-x{comId or self.comId}/community/leaderboard?rankingType={type}&start={start}"
 		if type != 4:url += f"&size={size}"
 
 		return self.req.make_sync_request("GET", url).json()["userProfileList"]
 
 
-	def get_store_chat_bubbles(self, start: int = 0, size: int = 25):
+	def get_store_chat_bubbles(self, start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Getting all available chat bubbles from store.
 
@@ -208,17 +208,17 @@ class CommunityOtherModule(BaseClass):
 		- size: int = 25
 			- how much you want to get
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/store/items?sectionGroupId=chat-bubble&start={start}&size={size}").json()
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/store/items?sectionGroupId=chat-bubble&start={start}&size={size}").json()
 	
 
-	def get_live_layer(self):
+	def get_live_layer(self, comId: str | int | None = None):
 		"""
 		Get live layer.
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/live-layer/homepage?v=2").json()["liveLayerList"]
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/live-layer/homepage?v=2").json()["liveLayerList"]
 
 
-	def apply_bubble(self, bubbleId: str, chatId: str, applyToAll: bool = False):
+	def apply_bubble(self, bubbleId: str, chatId: str, applyToAll: bool = False, comId: str | int | None = None):
 
 		"""
 		Apply bubble that you want.
@@ -235,10 +235,10 @@ class CommunityOtherModule(BaseClass):
 			"threadId": chatId,
 		}
 
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/apply-bubble", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/apply-bubble", data).json()
 
 
-	def apply_avatar_frame(self, avatarId: str, applyToAll: bool = True):
+	def apply_avatar_frame(self, avatarId: str, applyToAll: bool = True, comId: str | int | None = None):
 		"""
 		Apply avatar frame.
 
@@ -250,10 +250,10 @@ class CommunityOtherModule(BaseClass):
 			"frameId": avatarId,
 			"applyToAll": 1 if applyToAll is True else 0,
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/avatar-frame/apply", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/avatar-frame/apply", data).json()
 
 
-	def purchase(self, objectId: str, objectType: int = args.PurchaseTypes.Bubble, aminoPlus: bool = True, autoRenew: bool = False):
+	def purchase(self, objectId: str, objectType: int = args.PurchaseTypes.Bubble, aminoPlus: bool = True, autoRenew: bool = False, comId: str | int | None = None):
 		"""
 		Purchasing something from store
 
@@ -275,4 +275,4 @@ class CommunityOtherModule(BaseClass):
 			}
 		}
 
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/store/purchase", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/store/purchase", data).json()

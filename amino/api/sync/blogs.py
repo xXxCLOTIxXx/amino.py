@@ -89,4 +89,4 @@ class GlobalBlogsModule(BaseClass):
 		if language not in self.get_supported_languages():raise UnsupportedLanguage(language)
 		result = self.req.make_sync_request("GET", f"/g/s/announcement?language={language}&start={start}&size={size}").json()["blogList"]
 
-		return [Blog({"blog":x}) for x in result]
+		return [Blog(x) for x in result]

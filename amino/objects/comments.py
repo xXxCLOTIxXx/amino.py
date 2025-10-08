@@ -18,4 +18,4 @@ class Comment:
         self.subcommentsCount = data.get("subcommentsCount")
         self.type = data.get("type")
 
-        self.author = UserProfile({"userProfile":data.get("author", {})})
+        self.author = UserProfile(data.get("author", {}))

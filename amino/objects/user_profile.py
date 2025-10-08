@@ -5,11 +5,9 @@ from .base_object import BaseObject
 class UserProfile(BaseObject):
     def __init__(self, data: dict):
         super().__init__(data)
-
-
-        data = data.get("userProfile", {})
-        if data is None: data = {}
-        self.data = data
+        data = data or {}
+        if data.get("userProfile") is not None: data=data.get("userProfile", {})
+        
         self.status = data.get("status")
         self.mood_sticker = data.get("moodSticker")
         self.items_count = data.get("itemsCount")

@@ -7,6 +7,7 @@ from amino.helpers.generator import signature, req_time, new_sig, new_sig_a
 from amino.helpers.constants import api as api_url
 from amino.helpers import log
 from amino.helpers.exceptions import check_exceptions
+from amino import args
 from amino import InvalidProxyFormat
 import ssl
 
@@ -18,7 +19,7 @@ class Requester:
 	convenience methods for interaction with the API
 	"""
 	
-	def __init__(self, user_agent: str, deviceId: str, language: str, accept_language: str, proxies: dict[str, str] | str | None, ssl_verify: bool | str | None):
+	def __init__(self, user_agent: str, deviceId: str, language: str, accept_language: str, proxies: dict[str, str] | str | None, ssl_verify: bool | str | None, dorks_api_proxies: dict[str, str] | str | None):
 		self.user_agent = user_agent
 		self.deviceId = deviceId
 		self.language = language
@@ -26,6 +27,7 @@ class Requester:
 		self.sid: str | None = None
 		self.userId: str | None = None
 		self.proxies = proxies
+		self.dorks_api_proxies = dorks_api_proxies
 		self.ssl_verify=ssl_verify
 
 	def headers(self, headers: dict | None = None, content_type: str | None = None, data: dict | str | bytes | None = None) -> dict:
@@ -69,15 +71,18 @@ class Requester:
 		
 		if self.proxies is not None and not isinstance(self.proxies, dict):
 			raise InvalidProxyFormat('For a synchronous client, you need to pass the proxy as a dictionary.\nproxies = {"http": "http://127.0.0.1:8080","https": "http://127.0.0.1:8080"}')
-				
+		if self.dorks_api_proxies is not None and not isinstance(self.dorks_api_proxies, dict):
+			raise InvalidProxyFormat('For a synchronous client, you need to pass the proxy as a dictionary.\ndorks_api_proxies = {"http": "http://127.0.0.1:8080","https": "http://127.0.0.1:8080"}')
+			
 		if isinstance(body, dict):
 			body["timestamp"] = req_time()
 			body = dumps(body)
 
 		headers = self.headers(headers, data=body, content_type=content_type)
-		if self.userId: headers["NDC-MESSAGE-SIGNATURE"] = new_sig(
+		if self.userId and content_type not in args.UploadType.all:
+			headers["NDC-MESSAGE-SIGNATURE"] = new_sig(
 			body if isinstance(body, str) else body.decode("utf-8") if isinstance(body, bytes) else '',
-			self.userId)
+			self.userId, self.dorks_api_proxies)
 		method = method.upper()
 
 		with Session() as session:
@@ -101,7 +106,9 @@ class Requester:
 
 		if self.proxies is not None and not isinstance(self.proxies, str):
 			raise InvalidProxyFormat('For a async client, you need to pass the proxy as a string.\nproxies = "http://127.0.0.1:8080"')
-			
+		if self.dorks_api_proxies is not None and not isinstance(self.dorks_api_proxies, str):
+			raise InvalidProxyFormat('For a async client, you need to pass the proxy as a string.\ndorks_api_proxies = "http://127.0.0.1:8080"')
+		
 		if isinstance(body, dict):
 			body["timestamp"] = req_time()
 			body = dumps(body)
@@ -109,7 +116,7 @@ class Requester:
 		headers = self.headers(headers, data=body, content_type=content_type)
 		if self.userId: headers["NDC-MESSAGE-SIGNATURE"] = await new_sig_a(
 			body if isinstance(body, str) else body.decode("utf-8") if isinstance(body, bytes) else '',
-			self.userId)
+			self.userId, self.dorks_api_proxies)
 		method = method.upper()
 		
 		async with ClientSession() as asyncSession:

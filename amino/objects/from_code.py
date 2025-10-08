@@ -5,7 +5,6 @@ class FromCode(BaseObject):
     def __init__(self, data: dict):
         super().__init__(data)
         data = data.get("linkInfoV2", {})
-        self.data = data
 
         extensions: dict = data.get("extensions", {})
         link_info: dict = extensions.get("linkInfo", {})

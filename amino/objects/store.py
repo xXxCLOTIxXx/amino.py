@@ -29,7 +29,6 @@ class WalletInfo(BaseObject):
 
     def __init__(self, data: dict):
 
-
         class Coupon:
             def __init__(self, data: dict):
                 self.couponId: str | None = data.get("couponId")

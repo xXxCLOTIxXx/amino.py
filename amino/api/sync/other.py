@@ -1,10 +1,15 @@
 from amino.api.base import BaseClass
-from amino import args, FromCode
+from amino import FromCode
 from amino import SpecifyType
-from amino import MediaObject, BaseObject, LinkIdentify
+from amino import BaseObject, LinkIdentify
+from amino import args
+from amino import SpecifyType
+from amino import MediaObject
 
 from typing import BinaryIO
 from mimetypes import guess_type
+
+
 
 class GlobalOtherModule(BaseClass):
 
@@ -87,6 +92,9 @@ class GlobalOtherModule(BaseClass):
 			data["objectType"] = 2
 		else:raise SpecifyType
 		return BaseObject(self.req.make_sync_request("POST", f"/g/s/{'g-flag' if asGuest else 'flag'}", data).json())
+
+
+
 
 	def upload_media(self, file: BinaryIO, fileType: str | None = None) -> MediaObject:
 		"""

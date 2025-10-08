@@ -15,9 +15,11 @@ class RankingTableList:
 class Community(BaseObject):
     def __init__(self, data: dict):
         super().__init__(data)
-        if data:
-            data = data.get("community", {})
-        self.agent: UserProfile = UserProfile({"userProfile": data.get("agent", {})})
+        data = data or {}
+        if data.get("refObject") is not None:data= data.get("refObject", {})
+        if data.get("community") is not None:data = data.get("community", {})
+        
+        self.agent: UserProfile = UserProfile(data.get("agent", {}))
         self.rankingTable: list[RankingTableList] = [RankingTableList(x) for x in data.get("advancedSettings", {}).get("rankingTable", [])]
 
         self.usersCount = data.get("membersCount")

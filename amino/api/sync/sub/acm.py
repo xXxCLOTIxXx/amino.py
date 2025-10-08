@@ -3,7 +3,7 @@ from amino import args, WrongType, SpecifyType, MediaObject
 from typing import BinaryIO
 
 class ACMModule(BaseClass):
-	comId: str | None
+	comId: str | int | None
 	def upload_media(self, file: BinaryIO, fileType: str | None = None) -> MediaObject: ...
 
 
@@ -42,13 +42,13 @@ class ACMModule(BaseClass):
 		return self.req.make_sync_request("POST", f"/g/s/community", data).json()
 
 
-	def get_community_themepack_info(self):
+	def get_community_themepack_info(self, comId: str | int | None = None):
 		"""
 		This method can be used for getting info about current themepack of community.
 		"""
-		return self.req.make_sync_request("POST", f"/g/s-x{self.comId}/community/info?withTopicList=1&withInfluencerList=1&influencerListOrderStrategy=fansCount").json()['community']['themePack']
+		return self.req.make_sync_request("POST", f"/g/s-x{comId or self.comId}/community/info?withTopicList=1&withInfluencerList=1&influencerListOrderStrategy=fansCount").json()['community']['themePack']
 
-	def upload_themepack(self, file: BinaryIO):
+	def upload_themepack(self, file: BinaryIO, comId: str | int | None = None):
 		"""
 		Uploading new themepack.
 
@@ -119,9 +119,9 @@ class ACMModule(BaseClass):
 		**Parameters**
 		- file: zip file (rename .zip to .ndthemepack)
 		"""
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/media/upload/target/community-theme-pack", file.read()).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/media/upload/target/community-theme-pack", file.read()).json()
 
-	def delete_community(self, email: str, password: str, verificationCode: str):
+	def delete_community(self, email: str, password: str, verificationCode: str, comId: str | int | None = None):
 		"""
 		Deleting community.
 
@@ -142,7 +142,7 @@ class ACMModule(BaseClass):
 			},
 			"deviceID": self.deviceId
 		}
-		return self.req.make_sync_request("POST", f"/g/s-x{self.comId}/community/delete-request", data).json()
+		return self.req.make_sync_request("POST", f"/g/s-x{comId or self.comId}/community/delete-request", data).json()
 
 	def my_managed_communities(self, start: int = 0, size: int = 25):
 		"""
@@ -154,7 +154,7 @@ class ACMModule(BaseClass):
 		"""
 		return self.req.make_sync_request("GET", f"/g/s/community/managed?start={start}&size={size}").json()["communityList"]
 
-	def get_categories(self, start: int = 0, size: int = 25):
+	def get_categories(self, start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Getting categories of communities.
 
@@ -162,9 +162,9 @@ class ACMModule(BaseClass):
 		- start: start pos
 		- size: how much you want to get
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/blog-category?start={start}&size={size}").json()
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/blog-category?start={start}&size={size}").json()
 
-	def change_sidepanel_color(self, color: str):
+	def change_sidepanel_color(self, color: str, comId: str | int | None = None):
 		"""
 		Change sidepanel color.
 
@@ -175,9 +175,9 @@ class ACMModule(BaseClass):
 			"path": "appearance.leftSidePanel.style.iconColor",
 			"value": color
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/community/configuration", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/community/configuration", data).json()
 
-	def promote(self, userId: str, rank: str):
+	def promote(self, userId: str, rank: str, comId: str | int | None = None):
 		"""
 		Promote user to curator, leader or agent.
 
@@ -188,9 +188,9 @@ class ACMModule(BaseClass):
 		"""
 		if rank not in args.AdministratorsRank.all:raise SpecifyType(f"[AdministratorsRank.all] -> Available ranks: {args.AdministratorsRank.all}")
 		rank = rank.lower().replace("agent", "transfer-agent")
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/user-profile/{userId}/{rank}").json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/user-profile/{userId}/{rank}").json()
 
-	def get_join_requests(self, start: int = 0, size: int = 25):
+	def get_join_requests(self, start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Get all requests to join your community.
 
@@ -198,9 +198,9 @@ class ACMModule(BaseClass):
 		- start: start pos
 		- size: how much you want to get
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/community/membership-request?status=pending&start={start}&size={size}").json()
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/community/membership-request?status=pending&start={start}&size={size}").json()
 	
-	def accept_join_request(self, userId: str):
+	def accept_join_request(self, userId: str, comId: str | int | None = None):
 		"""
 		Accept user to join your community.
 
@@ -208,9 +208,9 @@ class ACMModule(BaseClass):
 		- user Id: str
 		"""
 		data = {}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/community/membership-request/{userId}/accept", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/community/membership-request/{userId}/accept", data).json()
 	
-	def reject_join_request(self, userId: str):
+	def reject_join_request(self, userId: str, comId: str | int | None = None):
 		"""
 		Reject user to join your community.
 
@@ -218,15 +218,15 @@ class ACMModule(BaseClass):
 		- userId: user id
 		"""
 		data = {}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/community/membership-request/{userId}/reject", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/community/membership-request/{userId}/reject", data).json()
 
-	def get_community_stats(self):
+	def get_community_stats(self, comId: str | int | None = None):
 		"""
 		Get community statistics.
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/community/stats").json()["communityStats"]
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/community/stats").json()["communityStats"]
 
-	def get_community_moderation_stats(self, type: str = "leader", start: int = 0, size: int = 25):
+	def get_community_moderation_stats(self, type: str = "leader", start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Get community moderation statistics.
 
@@ -236,9 +236,9 @@ class ACMModule(BaseClass):
 		- size: how much you want to get
 		"""
 		if type.lower() not in ("leader", "curator"):raise WrongType(f"{type} not in ('leader', 'curator')")
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/community/stats/moderation?type={type.lower()}&start={start}&size={size}").json()["userProfileList"]
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/community/stats/moderation?type={type.lower()}&start={start}&size={size}").json()["userProfileList"]
 
-	def change_welcome_message(self, message: str, isEnabled: bool = True):
+	def change_welcome_message(self, message: str, isEnabled: bool = True, comId: str | int | None = None):
 		"""
 		Change welcome message of community.
 
@@ -253,9 +253,9 @@ class ACMModule(BaseClass):
 				"text": message
 			}
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/community/configuration", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/community/configuration", data).json()
 
-	def change_community_invite_permission(self, onlyAdmins: bool = True):
+	def change_community_invite_permission(self, onlyAdmins: bool = True, comId: str | int | None = None):
 		"""
 		permission to invite to the community
 
@@ -267,10 +267,10 @@ class ACMModule(BaseClass):
 			"value": 2 if onlyAdmins is True else 1,
 			"action": "set"
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/community/configuration", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/community/configuration", data).json()
 
 
-	def change_community_aminoId(self, aminoId: str):
+	def change_community_aminoId(self, aminoId: str, comId: str | int | None = None):
 		"""
 		Change AminoID of community.
 
@@ -280,9 +280,9 @@ class ACMModule(BaseClass):
 		data = {
 			"endpoint": aminoId,
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/community/settings", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/community/settings", data).json()
 
-	def change_guidelines(self, message: str):
+	def change_guidelines(self, message: str, comId: str | int | None = None):
 		"""
 		Change rules of community.
 
@@ -290,9 +290,9 @@ class ACMModule(BaseClass):
 		- message: text
 		"""
 		data = {"content": message}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/community/guideline", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/community/guideline", data).json()
 
-	def edit_community(self, name: str | None = None, description: str | None = None, aminoId: str | None = None, primaryLanguage: str | None = None, themePackUrl: str | None = None):
+	def edit_community(self, name: str | None = None, description: str | None = None, aminoId: str | None = None, primaryLanguage: str | None = None, themePackUrl: str | None = None, comId: str | int | None = None):
 		"""
 		Edit community.
 
@@ -317,9 +317,9 @@ class ACMModule(BaseClass):
 		if themePackUrl is not None:
 			data["themePackUrl"] = themePackUrl
 		
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/community/settings", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/community/settings", data).json()
 
-	def change_module(self, module: str, isEnabled: bool):
+	def change_module(self, module: str, isEnabled: bool, comId: str | int | None = None):
 		"""
 		Enable or disable module.
 
@@ -332,9 +332,9 @@ class ACMModule(BaseClass):
 			"path": module,
 			"value": isEnabled
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/community/configuration", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/community/configuration", data).json()
 	
-	def add_influencer(self, userId: str, monthlyFee: int):
+	def add_influencer(self, userId: str, monthlyFee: int, comId: str | int | None = None):
 		"""
 		Create user fanclub.
 
@@ -346,19 +346,19 @@ class ACMModule(BaseClass):
 		data = {
 			"monthlyFee": monthlyFee
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/influencer/{userId}", data).json()
+		return self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/influencer/{userId}", data).json()
 		
 
-	def remove_influencer(self, userId: str):
+	def remove_influencer(self, userId: str, comId: str | int | None = None):
 		"""
 		Delete user fanclub.
 
 		**Parameters**
 		- userId: user id
 		"""
-		return self.req.make_sync_request("DELETE", f"/x{self.comId}/s/influencer/{userId}").json()
+		return self.req.make_sync_request("DELETE", f"/x{comId or self.comId}/s/influencer/{userId}").json()
 
-	def get_notice_list(self, start: int = 0, size: int = 25):
+	def get_notice_list(self, start: int = 0, size: int = 25, comId: str | int | None = None):
 		"""
 		Get notices list.
 
@@ -366,13 +366,13 @@ class ACMModule(BaseClass):
 		- start: start pos
 		- size: how much you want to get
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/notice?type=management&status=1&start={start}&size={size}").json()["noticeList"]
+		return self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/notice?type=management&status=1&start={start}&size={size}").json()["noticeList"]
 
-	def delete_pending_role(self, noticeId: str):
+	def delete_pending_role(self, noticeId: str, comId: str | int | None = None):
 		"""
 		Delete pending role.
 
 		**Parameters**
 		- noticeId: notice Id
 		"""
-		return self.req.make_sync_request("DELETE", f"/x{self.comId}/s/notice/{noticeId}").json()
+		return self.req.make_sync_request("DELETE", f"/x{comId or self.comId}/s/notice/{noticeId}").json()

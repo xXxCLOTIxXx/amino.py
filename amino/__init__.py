@@ -12,6 +12,7 @@ from .helpers.generator import (
 from .helpers import log, logging
 
 from .client import Client
+from .sub_client import SubClient
 
 from .helpers.constants import set_dorksapi_key
 

@@ -7,6 +7,8 @@ from orjson import loads, dumps
 from time import sleep
 from typing import Any
 
+from traceback import print_exc
+
 
 
 from amino import SocketNotStarted
@@ -298,6 +300,7 @@ class Socket(EventHandler, WsRequester):
 		log.debug(f"[Socket] Socket closed: {data} [status: {status}]")
 
 	def ws_on_error(self, ws: Any, error: Any) -> None:
+		print_exc()
 		log.error(f"[Socket] Error: {error}")
 
 	def ws_on_open(self, ws: Any) -> None:

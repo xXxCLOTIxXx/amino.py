@@ -8,7 +8,7 @@ class Event:
 	def __init__(self, data: dict):
 		self.data = data or {}
 		params = data.get("params", {})
-		self.message: Message = Message(data)
+		self.message: Message = Message(data.get("chatMessage", {}))
 		
 		self.comId = data.get("ndcId")
 		self.alertOption = data.get("alertOption")

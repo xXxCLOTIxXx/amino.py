@@ -8,8 +8,8 @@ class BaseObject:
     data: dict
 
     def __init__(self, data: dict):
-        self.data = data
-        self.api_message = data.get("api:message")
-        self.api_statuscode = data.get("api:statuscode")
-        self.api_duration = data.get("api:duration")
-        self.api_timestamp = data.get("api:timestamp")
+        self.data = data or {}
+        self.api_message = self.data.get("api:message")
+        self.api_statuscode = self.data.get("api:statuscode")
+        self.api_duration = self.data.get("api:duration")
+        self.api_timestamp = self.data.get("api:timestamp")

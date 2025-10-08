@@ -14,7 +14,8 @@ class AccountModule(BaseClass):
 	def ws_disconnect(self) -> None: ...
 
 	def pub_key(self) -> dict:
-		data=dumps(get_certs(self.userId))
+		proxies = self.req.dorks_api_proxies if isinstance(self.req.dorks_api_proxies, dict) else None
+		data=dumps(get_certs(self.userId, proxies))
 		return self.req.make_sync_request("POST", "/g/s/security/public_key", data).json()
 
 	def login(self, email: str, password: str | None = None, secret: str | None = None, client_type: int = args.ClientTypes.User) -> AuthData:

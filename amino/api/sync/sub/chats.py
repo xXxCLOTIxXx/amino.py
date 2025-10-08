@@ -2,16 +2,17 @@ from amino.api.base import BaseClass
 from amino import args, MediaObject
 from amino.helpers.generator import clientrefid, b64encode
 from amino import WrongType
+from amino import (Chat, Message, BaseObject, ChatMessages, UserProfile)
 
 from typing import BinaryIO
 from mimetypes import guess_type
 from uuid import uuid4
 
 class CommunityChatsModule(BaseClass):
-	comId: str | None
+	comId: str | int | None
 	def upload_media(self, file: BinaryIO, fileType: str | None = None) -> MediaObject: ...
 
-	def start_chat(self, userId: str | list | tuple, message: str, title: str | None = None, content: str | None = None, isGlobal: bool = False, publishToGlobal: bool = False):
+	def start_chat(self, userId: str | list | tuple, message: str, title: str | None = None, content: str | None = None, isGlobal: bool = False, publishToGlobal: bool = False, comId: str | int | None = None) -> Chat:
 		"""
 		Start an Chat with an User or List of Users.
 
@@ -42,9 +43,9 @@ class CommunityChatsModule(BaseClass):
 		if publishToGlobal is True:data["publishToGlobal"] = 1
 		else:data["publishToGlobal"] = 0
 
-		return self.req.make_sync_request("POST",  f"/x{self.comId}/s/chat/thread", data).json()["thread"]
+		return Chat(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread", data).json())
 
-	def invite_to_chat(self, userId: str | list | tuple, chatId: str):
+	def invite_to_chat(self, userId: str | list | tuple, chatId: str, comId: str | int | None = None) -> BaseObject:
 		"""
 		Invite a User or List of Users to a Chat.
 
@@ -58,13 +59,13 @@ class CommunityChatsModule(BaseClass):
 		else: raise WrongType(f"userId: {type(userId)}")
 		data = { "uids": userIds }
 
-		return self.req.make_sync_request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}/member/invite", data).json()
+		return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/member/invite", data).json())
 
 
 
 	#from aminofixfix
 	#idk, i don't test it
-	def send_video(self, chatId: str, videoFile: BinaryIO, imageFile: BinaryIO, message: str | None = None, mediaUhqEnabled: bool = False):
+	def send_video(self, chatId: str, videoFile: BinaryIO, imageFile: BinaryIO, message: str | None = None, mediaUhqEnabled: bool = False, comId: str | int | None = None) -> BaseObject:
 		"""
 		Sending video.
 
@@ -100,9 +101,9 @@ class CommunityChatsModule(BaseClass):
 			cover: (cover, imageFile.read(), 'application/octet-stream'),
 			'payload': (None, data, 'application/octet-stream')
 		}
-		return self.req.make_sync_request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}/message", data, files=files, content_type=None).json()
+		return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/message", data, files=files, content_type=None).json())
 
-	def send_message(self, chatId: str, message: str | None  = None, messageType: int = args.MessageTypes.Text, file: BinaryIO | None = None, replyTo: str | None = None, mentionUserIds: list | None = None, stickerId: str | None = None, embedId: str | None = None, embedType: int | None = None, embedLink: str | None = None, embedTitle: str | None = None, embedContent: str | None = None, embedImage: BinaryIO | None = None):
+	def send_message(self, chatId: str, message: str | None  = None, messageType: int = args.MessageTypes.Text, file: BinaryIO | None = None, replyTo: str | None = None, mentionUserIds: list | None = None, stickerId: str | None = None, embedId: str | None = None, embedType: int | None = None, embedLink: str | None = None, embedTitle: str | None = None, embedContent: str | None = None, embedImage: BinaryIO | None = None, comId: str | int | None = None) -> BaseObject:
 		"""
 		Send a Message to a Chat.
 
@@ -153,9 +154,9 @@ class CommunityChatsModule(BaseClass):
 			else:
 				url = self.upload_media(file).mediaValue
 				data["mediaValue"] = url
-		return self.req.make_sync_request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}/message", data).json()
+		return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/message", data).json())
 
-	def send_full_embed(self, link: str, image: BinaryIO, message: str, chatId: str):
+	def send_full_embed(self, link: str, image: BinaryIO, message: str, chatId: str, comId: str | int | None = None) -> BaseObject:
 		"""
 		send full embed
 		**Parameters**
@@ -177,9 +178,9 @@ class CommunityChatsModule(BaseClass):
 			"attachedObject": None
 		}
 
-		return self.req.make_sync_request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}/message", data).json()
+		return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/message", data).json())
 
-	def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str | None = None):
+	def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str | None = None, comId: str | int | None = None) -> BaseObject:
 		"""
 		Delete a Message from a Chat.
 
@@ -195,10 +196,10 @@ class CommunityChatsModule(BaseClass):
 				"adminOpName": 102,
 			}
 			if reason:data["adminOpNote"] = {"content": reason}
-			return self.req.make_sync_request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}/message/{messageId}/admin", data).json()
-		return self.req.make_sync_request("DELETE",  f"/x{self.comId}/s/chat/thread/{chatId}/message/{messageId}").json()
+			return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/message/{messageId}/admin", data).json())
+		return BaseObject(self.req.make_sync_request("DELETE",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/message/{messageId}").json())
 
-	def mark_as_read(self, chatId: str, messageId: str):
+	def mark_as_read(self, chatId: str, messageId: str, comId: str | int | None = None) -> BaseObject:
 		"""
 		Mark a Message from a Chat as Read.
 
@@ -207,9 +208,9 @@ class CommunityChatsModule(BaseClass):
 		- chatId : ID of the Chat.
 		"""
 		data = {"messageId": messageId}
-		return self.req.make_sync_request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}/mark-as-read", data).json()
+		return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/mark-as-read", data).json())
 
-	def edit_chat(self, chatId: str, title: str | None = None, icon: str | None = None, content: str | None = None, announcement: str | None = None, keywords: list | None = None, pinAnnouncement: bool | None = None, publishToGlobal: bool | None = None, fansOnly: bool | None = None):
+	def edit_chat(self, chatId: str, title: str | None = None, icon: str | None = None, content: str | None = None, announcement: str | None = None, keywords: list | None = None, pinAnnouncement: bool | None = None, publishToGlobal: bool | None = None, fansOnly: bool | None = None, comId: str | int | None = None) -> BaseObject:
 		"""
 		Edit chat settings.
 
@@ -236,9 +237,9 @@ class CommunityChatsModule(BaseClass):
 		if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
 		if publishToGlobal is not None: data["publishToGlobal"] = 0 if publishToGlobal else 1
 
-		return self.req.make_sync_request("POST",  f"/x{self.comId}/s/chat/thread/{chatId}", data).json()
+		return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}", data).json())
 
-	def do_not_disturb(self, chatId: str, doNotDisturb: bool = True):
+	def do_not_disturb(self, chatId: str, doNotDisturb: bool = True, comId: str | int | None = None) -> BaseObject:
 		"""
 		change chat notifications
 
@@ -249,9 +250,9 @@ class CommunityChatsModule(BaseClass):
 		data = {
 			"alertOption": 2 if doNotDisturb else 1,
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.userId}/alert", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/member/{self.userId}/alert", data).json())
 
-	def pin_chat(self, chatId: str, pin: bool = True):
+	def pin_chat(self, chatId: str, pin: bool = True, comId: str | int | None = None) -> BaseObject:
 		"""
 		Pin chat
 
@@ -259,10 +260,10 @@ class CommunityChatsModule(BaseClass):
 		- chatId : id of the chat
 		- pin : If the Chat should Pinned or not.
 		"""
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/{chatId}{'pin' if pin else 'unpin'}", {}).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}{'pin' if pin else 'unpin'}", {}).json())
 
 
-	def set_chat_background(self, chatId: str, backgroundImage: BinaryIO):
+	def set_chat_background(self, chatId: str, backgroundImage: BinaryIO, comId: str | int | None = None) -> BaseObject:
 		"""
 		Change chat background
 
@@ -273,9 +274,9 @@ class CommunityChatsModule(BaseClass):
 		data = {
 			"media": [100, self.upload_media(backgroundImage).mediaValue, None]
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.userId}/background", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/member/{self.userId}/background", data).json())
 	
-	def add_co_hosts(self, chatId: str, coHosts: list):
+	def add_co_hosts(self, chatId: str, coHosts: list, comId: str | int | None = None) -> BaseObject:
 		"""
 		Add assistants to chat
 
@@ -286,20 +287,20 @@ class CommunityChatsModule(BaseClass):
 		data = {
 			"uidList": coHosts
 		}
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/co-host", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/co-host", data).json())
 
 
-	def delete_co_host(self, chatId: str, userId: str):
+	def delete_co_host(self, chatId: str, userId: str, comId: str | int | None = None) -> BaseObject:
 		"""
 		Remove co-host from chat
 		**Parameters**:
 		- chatId: id of the chat 
 		- userId: id of the user 
 		"""
-		return self.req.make_sync_request("DELETE", f"/x{self.comId}/chat/thread/{chatId}/co-host/{userId}").json()
+		return BaseObject(self.req.make_sync_request("DELETE", f"/x{comId or self.comId}/chat/thread/{chatId}/co-host/{userId}").json())
 
 
-	def chat_view_only(self, chatId: str, viewOnly: bool = False):
+	def chat_view_only(self, chatId: str, viewOnly: bool = False, comId: str | int | None = None) -> BaseObject:
 		"""
 		set view-only mode
 
@@ -307,9 +308,9 @@ class CommunityChatsModule(BaseClass):
 		- chatId : id of the chat
 		- viewOnly : enable view only mode?
 		"""
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}").json()
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/view-only/{'enable' if viewOnly else 'disable'}").json())
 	
-	def member_can_invite_to_chat(self, chatId: str, canInvite: bool = True):
+	def member_can_invite_to_chat(self, chatId: str, canInvite: bool = True, comId: str | int | None = None) -> BaseObject:
 		"""
 		permission to invite users to chat
 
@@ -317,9 +318,9 @@ class CommunityChatsModule(BaseClass):
 		- chatId : id of the chat
 		- canInvite : member can invite to chat ?.
 		"""
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}").json()
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/members-can-invite/{'enable' if canInvite else 'disable'}").json())
 
-	def member_can_chat_tip(self, chatId: str, canTip: bool = True):
+	def member_can_chat_tip(self, chatId: str, canTip: bool = True, comId: str | int | None = None) -> BaseObject:
 		"""
 		permission to tip chat
 
@@ -327,9 +328,9 @@ class CommunityChatsModule(BaseClass):
 		- chatId : id of the chat
 		- canTip : if the Chat should be Tippable or not.
 		"""
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}").json()
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/tipping-perm-status/{'enable' if canTip else 'disable'}").json())
 
-	def transfer_host(self, chatId: str, userIds: list[str]):
+	def transfer_host(self, chatId: str, userIds: list[str], comId: str | int | None = None) -> BaseObject:
 		"""
 		transfer host from chat
 
@@ -338,9 +339,9 @@ class CommunityChatsModule(BaseClass):
 		- userIds: id of the user's
 		"""
 		data = { "uidList": userIds }
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/transfer-organizer", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/transfer-organizer", data).json())
 
-	def accept_host(self, chatId: str, requestId: str):
+	def accept_host(self, chatId: str, requestId: str, comId: str | int | None = None) -> BaseObject:
 		"""
 		Accepting host in chat.
 
@@ -348,41 +349,39 @@ class CommunityChatsModule(BaseClass):
 		- chatId: id of the chat 
 		- requestId: host transfer request ID
 		"""
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept").json()
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/transfer-organizer/{requestId}/accept").json())
 
-	def kick(self, userId: str, chatId: str, allowRejoin: bool = True):
-		return self.req.make_sync_request("DELETE", f"/x{self.comId}/s/chat/thread/{chatId}/member/{userId}?allowRejoin={int(allowRejoin)}").json()
+	def kick(self, userId: str, chatId: str, allowRejoin: bool = True, comId: str | int | None = None) -> BaseObject:
+		return BaseObject(self.req.make_sync_request("DELETE", f"/x{comId or self.comId}/s/chat/thread/{chatId}/member/{userId}?allowRejoin={int(allowRejoin)}").json())
 
-	def join_chat(self, chatId: str):
+	def join_chat(self, chatId: str, comId: str | int | None = None) -> BaseObject:
 		"""
 		Join an Chat.
 
 		**Parameters**
 		- chatId : ID of the Chat.
 		"""
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.userId}").json()
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/member/{self.userId}").json())
 
-	def leave_chat(self, chatId: str):
+	def leave_chat(self, chatId: str, comId: str | int | None = None) -> BaseObject:
 		"""
 		Leave an Chat.
 
 		**Parameters**
 		- chatId : ID of the Chat.
 		"""
-		return self.req.make_sync_request("DELETE", f"/x{self.comId}/s/chat/thread/{chatId}/member/{self.userId}").json()
+		return BaseObject(self.req.make_sync_request("DELETE", f"/x{comId or self.comId}/s/chat/thread/{chatId}/member/{self.userId}").json())
 
-	def delete_chat(self, chatId: str):
+	def delete_chat(self, chatId: str, comId: str | int | None = None) -> BaseObject:
 		"""
 		Delete a Chat.
 
 		**Parameters**
 		- chatId : ID of the Chat.
 		"""
-		return self.req.make_sync_request("DELETE", f"/x{self.comId}/s/chat/thread/{chatId}").json()
+		return BaseObject(self.req.make_sync_request("DELETE", f"/x{comId or self.comId}/s/chat/thread/{chatId}").json())
 
-
-
-	def vc_permission(self, chatId: str, permission: int = args.VoiceChatJoinPermissions.Open):
+	def vc_permission(self, chatId: str, permission: int = args.VoiceChatJoinPermissions.Open, comId: str | int | None = None) -> BaseObject:
 		"""
 		Manage permissions to VC.
 
@@ -391,30 +390,28 @@ class CommunityChatsModule(BaseClass):
 		- permission: voice chat access (use ``amino.arguments.VoiceChatJoinPermissions. some``)
 		"""
 		data = { "vvChatJoinType": permission }
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/vvchat-permission", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/vvchat-permission", data).json())
 
-	def get_vc_reputation_info(self, chatId: str):
+	def get_vc_reputation_info(self, chatId: str, comId: str | int | None = None) -> BaseObject:
 		"""
 		Get info about reputation that you got from VC.
 
 		**Parameters**
 		- chatId: chat ID
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/chat/thread/{chatId}/avchat-reputation").json()
+		return BaseObject(self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/chat/thread/{chatId}/avchat-reputation").json())
 
-	def claim_vc_reputation(self, chatId: str):
+	def claim_vc_reputation(self, chatId: str, comId: str | int | None = None) -> BaseObject:
 		"""
 		Claim reputation that you got from VC.
 
 		**Parameters**
 		- chatId: chat ID
 		"""
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/avchat-reputation").json()
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/avchat-reputation").json())
 
 
-
-
-	def get_my_chats(self, start: int = 0, size: int = 25):
+	def get_my_chats(self, start: int = 0, size: int = 25, comId: str | int | None = None) -> list[Chat]:
 		"""
 		List of Chats the account is in.
 
@@ -422,9 +419,11 @@ class CommunityChatsModule(BaseClass):
 		- start : Where to start the list.
 		- size : Size of the list.
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/chat/thread?type=joined-me&start={start}&size={size}").json()["threadList"]
+		result = self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/chat/thread?type=joined-me&start={start}&size={size}").json()["threadList"]
+		return [Chat(x) for x in result]
 
-	def get_public_chats(self, type: str = args.Sorting2.Recommended, start: int = 0, size: int = 25):
+
+	def get_public_chats(self, type: str = args.Sorting2.Recommended, start: int = 0, size: int = 25, comId: str | int | None = None) -> list[Chat]:
 		"""
 		List of Public Chats of the Community.
 
@@ -433,18 +432,19 @@ class CommunityChatsModule(BaseClass):
 		- size : Size of the list.
 		- type : filter chats by type. use ``Sorting2`` object
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/chat/thread?type=public-all&filterType={type}&start={start}&size={size}").json()["threadList"]
+		result = self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/chat/thread?type=public-all&filterType={type}&start={start}&size={size}").json()["threadList"]
+		return [Chat(x) for x in result]
 
-	def get_chat(self, chatId: str):
+	def get_chat(self, chatId: str, comId: str | int | None = None) -> Chat:
 		"""
 		Get the Chat Object from an Chat ID.
 
 		**Parameters**
 		- chatId : ID of the Chat.
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/chat/thread/{chatId}").json()["thread"]
+		return Chat(self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/chat/thread/{chatId}").json())
 
-	def get_chat_messages(self, chatId: str, size: int = 25, pageToken: str | None = None):
+	def get_chat_messages(self, chatId: str, size: int = 25, pageToken: str | None = None, comId: str | int | None = None) -> ChatMessages:
 		"""
 		List of Messages from an Chat.
 
@@ -453,9 +453,9 @@ class CommunityChatsModule(BaseClass):
 		- size : Size of the list.
 		- pageToken : Next Page Token.
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/chat/thread/{chatId}/message?v=2&pagingType=t&size={size}{f'&pageToken={pageToken}' if pageToken else  ''}").json()
+		return ChatMessages(self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/chat/thread/{chatId}/message?v=2&pagingType=t&size={size}{f'&pageToken={pageToken}' if pageToken else  ''}").json())
 
-	def get_message_info(self, chatId: str, messageId: str):
+	def get_message_info(self, chatId: str, messageId: str, comId: str | int | None = None) -> Message:
 		"""
 		Information of an Message from an Chat.
 
@@ -463,11 +463,11 @@ class CommunityChatsModule(BaseClass):
 		- chatId : ID of the Chat.
 		- message : ID of the Message.
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/chat/thread/{chatId}/message/{messageId}").json()["message"]
+		return Message(self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/chat/thread/{chatId}/message/{messageId}").json())
 
 
 
-	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25):
+	def get_chat_users(self, chatId: str, start: int = 0, size: int = 25, comId: str | int | None = None) -> list[UserProfile]:
 		"""
 		Getting users in chat.
 
@@ -478,11 +478,11 @@ class CommunityChatsModule(BaseClass):
 		- size: int
 			- how much you want to get
 		"""
-		return self.req.make_sync_request("GET", f"/x{self.comId}/s/chat/thread/{chatId}/member?type=default&cv=1.2&start={start}&size={size}").json()["memberList"]
+		result = self.req.make_sync_request("GET", f"/x{comId or self.comId}/s/chat/thread/{chatId}/member?type=default&cv=1.2&start={start}&size={size}").json()["memberList"]
+		return [UserProfile(x) for x in result]
 
 
-
-	def invite_to_vc(self, chatId: str, userId: str):
+	def invite_to_vc(self, chatId: str, userId: str, comId: str | int | None = None) -> BaseObject:
 		"""
 		Invite a User to a Voice Chat
 
@@ -491,4 +491,4 @@ class CommunityChatsModule(BaseClass):
 		- userId - ID of the User
 		"""
 		data = { "uid": userId }
-		return self.req.make_sync_request("POST", f"/x{self.comId}/s/chat/thread/{chatId}/vvchat-presenter/invite/", data).json()
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/vvchat-presenter/invite/", data).json())

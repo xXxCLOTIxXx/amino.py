@@ -8,8 +8,10 @@ from amino.helpers.constants import gen_headers
 from sys import exit
 from time import sleep
 
+
+
+
 class Client(
-	_Client,
 	Socket,
 	AccountModule,
 	GlobalUsersModule,
@@ -18,7 +20,8 @@ class Client(
 	GlobalStoreModule,
 	GlobalCommentsModule,
 	GlobalChatsModule,
-	GlobalBlogsModule):
+	GlobalBlogsModule,
+	_Client):
 
 	def __init__(self,
 			  deviceId: str | None = None,
@@ -29,7 +32,8 @@ class Client(
 			  socket_error_trace: bool = False,
 			  socket_daemon: bool = False,
 			  proxies: dict[str, str] | None = None,
-			  ssl_verify: bool | str | None = None):
+			  ssl_verify: bool | str | None = None,
+			  dorks_api_proxies: dict[str,str] | None = None):
 	
 		
 		Socket.__init__(self, socket_error_trace, socket_daemon)
@@ -37,7 +41,7 @@ class Client(
 		if deviceId is None:
 			deviceId=gen_deviceId()
 			log.warning(f"You didn't explicitly specify a device ID in the client.\nA new device ID was generated for you: {deviceId}.\nSave it for future use.")
-		self.req = Requester(user_agent, deviceId, community_language, accept_language, proxies, ssl_verify)
+		self.req = Requester(user_agent, deviceId, community_language, accept_language, proxies, ssl_verify, dorks_api_proxies)
 
 		if gen_headers.get("Authorization") is None:
 			log.critical(f"You haven't specified a key for the signature generation service.\nYou can get one through the Telegram bot: @aminodorks_bot.\nuse: amino.set_dorksapi_key")
@@ -53,7 +57,7 @@ class Client(
 	
 	def __repr__(self):
 		return (f"amino.Client(deviceId={self.deviceId!r}, user_agent{self.user_agent!r}, language={self.language!r}, "
-				f"socket_enable={self.socket_enable!r}, error_trace={self.error_trace!r}, "
+				f"socket_enable={self.socket_enable!r}"
 				f"SID={self.sid!r})")
 
 

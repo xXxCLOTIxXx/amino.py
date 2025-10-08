@@ -6,7 +6,6 @@ from amino import AuthData
 class BaseClass():
 	req: Requester
 	socket_enable: bool
-	error_trace: bool
 	account: AuthData = AuthData({})
 	
 	@property
