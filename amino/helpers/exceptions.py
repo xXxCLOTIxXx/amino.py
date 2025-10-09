@@ -110,7 +110,18 @@ class RequiredAuthorization(LibraryError):
 class ServiceUnavailable(AminoError):
 	"""
 	- **Status Code** : 503
-	- **API Message** : 503  Service unavailable.
+	- **HTML Message** : 503  Service unavailable.
+	- **API String** : ``Unknown String``
+	"""
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+
+
+class BadGateway(AminoError):
+	"""
+	- **Status Code** : 503
+	- **HTML Message** : 503 Bad Gateway.
 	- **API String** : ``Unknown String``
 	"""
 
@@ -846,6 +857,7 @@ class FailedSubscribeFanClub(AminoError):
 
 exceptions_list = {
 	"s503": ServiceUnavailable,
+	"s502": BadGateway,
 	"s403": IpTemporaryBan,
 	100: UnsupportedService,
 	102: FileTooLarge,
@@ -938,6 +950,7 @@ def check_exceptions(data : str, status : int) -> None:
 		except:raise UnknownError(_data)
 	except JSONDecodeError:
 		if status == 503:code="s503"
+		elif status == 502: code = "s502"
 		else:code="s403"
 	if code in exceptions_list:raise exceptions_list[code](data)
 	else:raise UnknownError(data)

@@ -7,6 +7,7 @@ from base64 import b64encode, urlsafe_b64decode
 from time import strftime, gmtime
 from requests import Session
 from aiohttp import ClientSession
+from datetime import datetime, timezone as tz
 
 from amino import DorksAPIError
 from amino.helpers.constants import DEVICE_KEY, SIG_KEY, PREFIX, gen_headers, aminodorks_api
@@ -128,8 +129,9 @@ def sid_to_client_type(SID: str) -> int:
 	"""
 	return decode_sid(SID)["6"]
 
-
-
+def get_iso_timestamp() -> str:
+    now = datetime.now(tz.utc)
+    return now.isoformat(timespec='seconds').replace('+00:00', 'Z')
 
 
 def get_certs(userId: str | None, proxy: dict[str,str] | None = None):

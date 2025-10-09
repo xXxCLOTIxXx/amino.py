@@ -1,9 +1,6 @@
 class ChatTypes:
     """
     types of chats
-    
-    attributes:
-    - User
 
     """
     Private: int = 0

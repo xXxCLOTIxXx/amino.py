@@ -106,7 +106,8 @@ class CommunityOtherModule(BaseClass):
 				"end": endTime
 			}],
 			"optInAdsFlags": 2147483647,
-			"timezone": tz if tz else timezone()
+			"timezone": tz if tz else timezone(),
+			"uid": self.userId
 		}
 		if timers: data["userActiveTimeChunkList"] = timers
 

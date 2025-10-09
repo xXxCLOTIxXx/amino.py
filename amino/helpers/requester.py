@@ -73,7 +73,8 @@ class Requester:
 			raise InvalidProxyFormat('For a synchronous client, you need to pass the proxy as a dictionary.\nproxies = {"http": "http://127.0.0.1:8080","https": "http://127.0.0.1:8080"}')
 		if self.dorks_api_proxies is not None and not isinstance(self.dorks_api_proxies, dict):
 			raise InvalidProxyFormat('For a synchronous client, you need to pass the proxy as a dictionary.\ndorks_api_proxies = {"http": "http://127.0.0.1:8080","https": "http://127.0.0.1:8080"}')
-			
+		
+		b = body
 		if isinstance(body, dict):
 			body["timestamp"] = req_time()
 			body = dumps(body)
@@ -88,7 +89,7 @@ class Requester:
 		with Session() as session:
 			response: Response = session.request(method, f"{base_url or api_url}{endpoint or ''}", data=body, headers=headers, timeout=timeout, files=files, proxies=self.proxies, verify=self.ssl_verify)
 
-			log.debug(f"[https][{method}][{base_url or ''}{endpoint or ''}][{response.status_code}]: {len(body) if isinstance(body, bytes) else body}\n-----headers-----\n{headers}\n-----------------\n")
+			log.debug(f"[https][{method}][{base_url or ''}{endpoint or ''}][{response.status_code}]: {len(b) if isinstance(b, bytes) else b}\n-----headers-----\n{headers}\n-----------------\n")
 			if response.status_code != allowed_code:check_exceptions(response.text, response.status_code)
 			return response
 
@@ -108,7 +109,7 @@ class Requester:
 			raise InvalidProxyFormat('For a async client, you need to pass the proxy as a string.\nproxies = "http://127.0.0.1:8080"')
 		if self.dorks_api_proxies is not None and not isinstance(self.dorks_api_proxies, str):
 			raise InvalidProxyFormat('For a async client, you need to pass the proxy as a string.\ndorks_api_proxies = "http://127.0.0.1:8080"')
-		
+		b = body
 		if isinstance(body, dict):
 			body["timestamp"] = req_time()
 			body = dumps(body)
@@ -122,7 +123,7 @@ class Requester:
 		async with ClientSession() as asyncSession:
 			
 			response = await asyncSession.request(method, f"{base_url or api_url}{endpoint or ''}", data=body, headers=headers, timeout=timeout, proxy=self.proxies, ssl=self.build_aiohttp_ssl_context())
-			log.debug(f"[https][{method}][{base_url if base_url else ''}{endpoint or ''}][{response.status}]: {len(body) if isinstance(body, bytes) else body}\n-----headers-----\n{headers}\n-----------------\n")
+			log.debug(f"[https][{method}][{base_url if base_url else ''}{endpoint or ''}][{response.status}]: {len(b) if isinstance(b, bytes) else b}\n-----headers-----\n{headers}\n-----------------\n")
 			if response.status != allowed_code:check_exceptions(await response.text(), response.status)
 			return response
 		

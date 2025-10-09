@@ -1,7 +1,7 @@
 from amino.api.base import BaseClass
 from amino import WrongType
 from amino import args, MediaObject, Message, UserProfile, BaseObject, Chat, ChatMessages
-from amino.helpers.generator import clientrefid, b64encode
+from amino.helpers.generator import clientrefid, b64encode, get_iso_timestamp
 from typing import BinaryIO
 from mimetypes import guess_type
 
@@ -52,7 +52,7 @@ class GlobalChatsModule(BaseClass):
 		**Parameters**
 		- chatId : ID of the Chat.
 		"""
-		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/member/{self.userId}").json())
+		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/member/{self.userId}", content_type="application/x-www-form-urlencoded").json())
 
 	def leave_chat(self, chatId: str) -> BaseObject:
 		"""
@@ -61,7 +61,7 @@ class GlobalChatsModule(BaseClass):
 		**Parameters**
 		- chatId : ID of the Chat.
 		"""
-		return BaseObject(self.req.make_sync_request("DELETE", f"/g/s/chat/thread/{chatId}/member/{self.userId}").json())
+		return BaseObject(self.req.make_sync_request("DELETE", f"/g/s/chat/thread/{chatId}/member/{self.userId}", content_type="application/x-www-form-urlencoded").json())
 
 
 	def start_private_chat(self, userId: str, message: str | None = None) -> Chat:
@@ -98,7 +98,7 @@ class GlobalChatsModule(BaseClass):
 		"""
 		if not isinstance(userId, (str, list)):raise WrongType(type(userId))
 		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/member/invite", {
-			"uids": list(userId) if isinstance(userId, str) else userId,
+			"uids": list(userId) if isinstance(userId, str) else userId, "uid": self.userId
 		}).json())
 
 
@@ -114,7 +114,7 @@ class GlobalChatsModule(BaseClass):
 		"""
 		return BaseObject(self.req.make_sync_request("DELETE", f"/g/s/chat/thread/{chatId}/member/{userId}?allowRejoin={int(allowRejoin)}").json())
 
-	def get_chat_messages(self, chatId: str, size: int = 25, pageToken: str | None = None):
+	def get_chat_messages(self, chatId: str, size: int = 25, pageToken: str | None = None) -> ChatMessages:
 		"""
 		List of Messages from an Chat.
 
@@ -137,78 +137,6 @@ class GlobalChatsModule(BaseClass):
 		return Message(self.req.make_sync_request("GET", f"/g/s/chat/thread/{chatId}/message/{messageId}").json())
 
 
-	def send_message(self, chatId: str, message: str | None = None, messageType: int = args.MessageTypes.Text, file: BinaryIO | None = None, replyTo: str | None = None, mentionUserIds: list | None = None, stickerId: str | None = None, embedId: str | None = None, embedType: int | None = None, embedLink: str | None = None, embedTitle: str | None = None, embedContent: str | None = None, embedImage: BinaryIO | None = None) -> Message:
-		"""
-		Send a Message to a Chat.
-
-		**Parameters**
-		- message : Message to be sent
-		- chatId : ID of the Chat.
-		- file : File to be sent.
-		- messageType : Type of the Message.
-		- mentionUserIds : List of User IDS to mention. '@' needed in the Message.
-		- replyTo : Message ID to reply to.
-		- stickerId : Sticker ID to be sent.
-		- embedType : Type of the Embed. Can be aminofixfix.lib.objects.EmbedTypes only. By default it's LinkSnippet one.
-		- embedLink : Link of the Embed. Can be only "ndc://" link if its AttachedObject.
-		- embedImage : Image of the Embed. Required to send Embed, if its LinkSnippet. Can be only 1024x1024 max. Can be string to existing image uploaded to Amino or it can be opened (not readed) file.
-		- embedId : ID of the Embed. Works only in AttachedObject Embeds. It can be any ID, just gen it using str_uuid4().
-		- embedType : Type of the AttachedObject Embed. Works only in AttachedObject Embeds. Just look what values AttachedObjectTypes enum contains.
-		- embedTitle : Title of the Embed. Works only in AttachedObject Embeds. Can be empty.
-		- embedContent : Content of the Embed. Works only in AttachedObject Embeds. Can be empty.
-		"""
-		embedImageList = None
-		
-		if message is not None:
-			message = message.replace("<@", "‎‏").replace("@>", "‬‭")
-		mentions = []
-		if mentionUserIds:
-			for mention_uid in mentionUserIds:
-				mentions.append({"uid": mention_uid})
-		if embedImage:
-			embedImageList = [
-			[
-				100, self.upload_media(embedImage).mediaValue, None
-			]
-			]
-		data = {
-			"type": messageType,
-			"content": message,
-			"clientRefId": clientrefid(),
-			"attachedObject": {
-				"objectId": embedId,
-				"objectType": embedType,
-				"link": embedLink,
-				"title": embedTitle,
-				"content": embedContent,
-				"mediaList": embedImageList
-			},
-			"extensions": {"mentionedArray": mentions},
-		}
-		if replyTo: data["replyMessageId"] = replyTo
-		if stickerId:
-			data["content"] = None
-			data["stickerId"] = stickerId
-			data["type"] = args.MessageTypes.Sticker
-
-		if file:
-			data["content"] = None
-			fileType = guess_type(file.name)[0]
-			if fileType == args.UploadType.audio:
-				data["type"] = args.MessageTypes.Voice
-				data["mediaType"] = 110
-			elif fileType in (args.UploadType.image_png, args.UploadType.image_jpg):
-				data["mediaType"] = 100
-				data["mediaUploadValueContentType"] = fileType
-				data["mediaUhqEnabled"] = True
-			elif fileType == args.UploadType.gif:
-				data["mediaType"] = 100
-				data["mediaUploadValueContentType"] = fileType
-				data["mediaUhqEnabled"] = True
-			else: raise WrongType("file type not allowed.")
-			data["mediaUploadValue"] = b64encode(file.read()).decode()
-		return Message(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/message", data).json())
-
 	def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str | None = None) -> BaseObject:
 		"""
 		Delete a Message from a Chat.
@@ -222,6 +150,7 @@ class GlobalChatsModule(BaseClass):
 		if asStaff:
 			data: dict = {
 				"adminOpName": 102,
+				"uid": self.userId
 			}
 			if reason:data["adminOpNote"] = {"content": reason}
 			return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/message/{messageId}/admin", data).json())
@@ -238,6 +167,8 @@ class GlobalChatsModule(BaseClass):
 		"""
 		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/mark-as-read", {
 			"messageId": messageId,
+			"uid": self.userId,
+			"createdTime": get_iso_timestamp()
 		}).json())
 
 
@@ -277,7 +208,7 @@ class GlobalChatsModule(BaseClass):
 
 
 
-	def edit_chat(self, chatId: str, title: str | None = None, icon: str | None = None, content: str | None = None, announcement: str | None = None, keywords: list | None = None, pinAnnouncement: bool | None = None, publishToGlobal: bool | None = None, fansOnly: bool | None = None) -> BaseObject:
+	def edit_chat(self, chatId: str, title: str | None = None, icon: BinaryIO | None = None, backgroundImage: BinaryIO | None = None, content: str | None = None, announcement: str | None = None, keywords: list | None = None, pinAnnouncement: bool | None = None, publishToGlobal: bool | None = None, fansOnly: bool | None = None) -> BaseObject:
 		"""
 		edit chat settings
 
@@ -293,24 +224,24 @@ class GlobalChatsModule(BaseClass):
 		- fansOnly : If the Chat should be Fans Only or not.
 		"""
 
-		data = {}
 
-		if title:
-			data["title"] = title
-		if content:
-			data["content"] = content
-		if icon:
-			data["icon"] = icon
-		if keywords:
-			data["keywords"] = keywords
-		if announcement:
-			data["extensions"] = {"announcement": announcement}
-		if pinAnnouncement:
-			data["extensions"] = {"pinAnnouncement": pinAnnouncement}
-		if fansOnly:
-			data["extensions"] = {"fansOnly": fansOnly}
-		if publishToGlobal is not None:
-			data["publishToGlobal"] = 0 if publishToGlobal is True else 1
+		data: dict = {"uid": self.userId, "extensions":{}}
+		
+		if title: data["title"] = title
+		if content: data["content"] = content
+		if icon: data["icon"] = self.upload_media(icon).mediaValue
+		if backgroundImage:
+			d = [100, self.upload_media(backgroundImage).mediaValue, None]
+			data["extensions"]["bm"] = d 
+			data["backgroundMedia"] = d
+		if keywords: data["keywords"] = keywords
+		if announcement: data["extensions"]["announcement"] = announcement
+		if pinAnnouncement: data["extensions"]["pinAnnouncement"] = pinAnnouncement
+		if fansOnly: data["extensions"]["fansOnly"] = fansOnly
+		if publishToGlobal is not None: data["publishToGlobal"] = 0 if publishToGlobal else 1
+
+
+
 
 		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}", data).json())
 
@@ -326,6 +257,7 @@ class GlobalChatsModule(BaseClass):
 		"""
 		data = {
 			"alertOption": 2 if doNotDisturb else 1,
+			"uid": self.userId
 		}
 		return BaseObject(self.req.make_sync_request("POST", f"/g/s/chat/thread/{chatId}/member/{self.userId}/alert", data).json())
 

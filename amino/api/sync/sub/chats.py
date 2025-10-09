@@ -1,6 +1,6 @@
 from amino.api.base import BaseClass
 from amino import args, MediaObject
-from amino.helpers.generator import clientrefid, b64encode
+from amino.helpers.generator import clientrefid, b64encode, get_iso_timestamp
 from amino import WrongType
 from amino import (Chat, Message, BaseObject, ChatMessages, UserProfile)
 
@@ -11,6 +11,7 @@ from uuid import uuid4
 class CommunityChatsModule(BaseClass):
 	comId: str | int | None
 	def upload_media(self, file: BinaryIO, fileType: str | None = None) -> MediaObject: ...
+
 
 	def start_public_chat(self, title: str, icon: BinaryIO, content: str = "", userId: str | list | tuple = [], publishToGlobal: bool = False, comId: str | int | None = None) -> Chat:
 		if isinstance(userId, str): userId = [userId]
@@ -49,8 +50,6 @@ class CommunityChatsModule(BaseClass):
 
 		return Chat(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread", data).json())
 
-
-
 	def invite_to_chat(self, userId: str | list | tuple, chatId: str, comId: str | int | None = None) -> BaseObject:
 		"""
 		Invite a User or List of Users to a Chat.
@@ -63,15 +62,72 @@ class CommunityChatsModule(BaseClass):
 		elif isinstance(userId, list): userIds = userId
 		elif isinstance(userId, tuple): userIds = userId
 		else: raise WrongType(f"userId: {type(userId)}")
-		data = { "uids": userIds }
+		data = { "uids": userIds, "uid": self.userId}
 
 		return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/member/invite", data).json())
 
+	def send_message(self, chatId: str, message: str, replyId: str | None = None, mentionUserIds: list | None = None, comId: str | int | None = None) -> Message:
+		
+		message = message.replace("<@", "‎‏").replace("@>", "‬‭")
+
+		data = {
+		"type": args.MessageTypes.Text,
+		"content": message,
+		#"clientRefId": clientrefid(),
+		"attachedObject": None,
+		"uid": self.userId
+		}
+
+		if replyId:data["replyMessageId"] = replyId
+		if mentionUserIds:
+			mentions = [{"uid": mention_uid} for mention_uid in mentionUserIds]
+			data["extensions"] = {"mentionedArray": mentions}
+
+		return Message(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/message", data).json())
+
+	def send_sticker(self, chatId: str, stickerId: str, comId: str | int | None = None) -> Message:
+
+		data = {
+		"type": args.MessageTypes.Sticker,
+		#"clientRefId": clientrefid(),
+		"uid": self.userId,
+		"stickerId": stickerId
+		}
+
+		return Message(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/message", data).json())
+
+	def send_media(self, chatId: str, file: BinaryIO, fileType: str | None = None, mediaUhqEnabled: bool = False, comId: str | int | None = None) -> Message:
+		
+		if fileType is None:
+			fileType = guess_type(file.name)[0]
+
+		data = {
+			"type": args.MessageTypes.Text,
+			"content": None,
+			"clientRefId": clientrefid(),
+			"attachedObject": None,
+			"mediaUploadValueContentType": fileType,
+			"uid": "a8bfbad0-4427-4999-bb08-b0b65092b869"
+			}
 
 
-	#from aminofixfix
-	#idk, i don't test it
-	def send_video(self, chatId: str, videoFile: BinaryIO, imageFile: BinaryIO, message: str | None = None, mediaUhqEnabled: bool = False, comId: str | int | None = None) -> BaseObject:
+		data["mediaUploadValue"] = b64encode(file.read()).decode()
+		if fileType == args.UploadType.audio:
+			#TODO FIX
+			data["type"] =  args.MessageTypes.Voice
+			data["mediaType"] = 110
+		elif fileType in [
+			args.UploadType.gif,
+			args.UploadType.image_jpeg,
+			args.UploadType.image_jpg,
+			args.UploadType.image_png]:
+			data["mediaUhqEnabled"] = mediaUhqEnabled
+			data["mediaType"] = 100
+
+		return Message(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/message", data).json())
+
+	def send_video(self, chatId: str, videoFile: BinaryIO, imageFile: BinaryIO, message: str | None = None, mediaUhqEnabled: bool = False, comId: str | int | None = None) -> Message:
+		#TODO FIX
 		"""
 		Sending video.
 
@@ -80,7 +136,6 @@ class CommunityChatsModule(BaseClass):
 		- message: message
 		- videoFile: BinaryIO open(file, "rb") (video file)
 		- imageFile: BinaryIO open(file, "rb") (image file)
-		- mediaUhqEnabled: high quality?
 		"""
 
 		i =  str(uuid4()).upper()
@@ -99,7 +154,8 @@ class CommunityChatsModule(BaseClass):
 			},
 			"type": args.MessageTypes.Video,
 			"mediaUhqEnabled": mediaUhqEnabled,
-			"extensions": {}    
+			"extensions": {},
+			"uid": self.userId 
 		}
 
 		files = {
@@ -107,63 +163,11 @@ class CommunityChatsModule(BaseClass):
 			cover: (cover, imageFile.read(), 'application/octet-stream'),
 			'payload': (None, data, 'application/octet-stream')
 		}
-		return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/message", data, files=files, content_type=None).json())
+		return Message(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/message", data, files=files, content_type=None).json())
 
-	def send_message(self, chatId: str, message: str | None  = None, messageType: int = args.MessageTypes.Text, file: BinaryIO | None = None, replyTo: str | None = None, mentionUserIds: list | None = None, stickerId: str | None = None, embedId: str | None = None, embedType: int | None = None, embedLink: str | None = None, embedTitle: str | None = None, embedContent: str | None = None, embedImage: BinaryIO | None = None, comId: str | int | None = None) -> BaseObject:
-		"""
-		Send a Message to a Chat.
-
-		**Parameters**
-		- message : Message to be sent
-		- chatId : ID of the Chat.
-		- file : File to be sent.
-		- messageType : Type of the Message.
-		- mentionUserIds : List of User IDS to mention. '@' needed in the Message.
-		- replyTo : Message ID to reply to.
-		- stickerId : Sticker ID to be sent.
-		- embedLink : Link of the Embed. Can be only "ndc://" link
-		- embedImage : Image of the Embed. Required to send Embed, Can be only 1024x1024 max. Can be string to existing image uploaded to Amino or it can be opened (not readed) file.
-		- embedId : ID of the Embed. Works only in AttachedObject Embeds. It can be any ID, just gen it using str_uuid4().
-		- embedType : Type of the AttachedObject Embed. Works only in AttachedObject Embeds (use amino.AttachedObjectTypes. some)
-		- embedTitle : Title of the Embed. Works only in AttachedObject Embeds. Can be empty.
-		- embedContent : Content of the Embed. Works only in AttachedObject Embeds. Can be empty.
-		"""		
+	def send_link_snippet(self, chatId: str, link: str, image: BinaryIO, message: str, comId: str | int | None = None) -> Message:
+		#TODO FIX
 		
-		data = {
-			"type": messageType,
-			"content": message,
-			"clientRefId": clientrefid()
-		}
-		if	any(obj is None for obj in [embedId, embedType, embedLink, embedTitle, embedContent, embedImage]):
-			attachedObject = {}
-			if embedId:attachedObject["objectId"] = embedId
-			if embedType:attachedObject["objectType"] = embedType
-			if embedLink:attachedObject["link"] = embedLink
-			if embedTitle:attachedObject["title"] = embedTitle
-			if embedContent:attachedObject["content"] = embedContent
-			if embedImage:attachedObject["mediaList"] = [[100, self.upload_media(embedImage).mediaValue, None]]
-			data["attachedObject"] = attachedObject
-		if mentionUserIds:
-			mentions = [{"uid": mention_uid} for mention_uid in mentionUserIds]
-			data["extensions"] = {"mentionedArray": mentions}
-		if replyTo: data["replyMessageId"] = replyTo
-		if stickerId:
-			data["content"] = None
-			data["stickerId"] = stickerId
-			data["type"] = args.MessageTypes.Sticker
-		if file:
-			data["content"] = None
-			fileType = guess_type(file.name)[0]
-			if fileType == args.UploadType.audio:
-				data["type"] =  args.MessageTypes.Voice
-				data["mediaType"] = 110
-				data["mediaUploadValue"] = b64encode(file.read()).decode()
-			else:
-				url = self.upload_media(file).mediaValue
-				data["mediaValue"] = url
-		return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/message", data).json())
-
-	def send_full_embed(self, link: str, image: BinaryIO, message: str, chatId: str, comId: str | int | None = None) -> BaseObject:
 		"""
 		send full embed
 		**Parameters**
@@ -172,20 +176,26 @@ class CommunityChatsModule(BaseClass):
 		- link : Link of the Embed. Can be only "ndc://" link
 		- image : Image of the Embed. Required to send Embed, Can be only 1024x1024 max. Can be string to existing image uploaded to Amino or it can be opened (not readed) file.
 		"""
-		url = self.upload_media(image).mediaValue
+
+		fileType = guess_type(image.name)[0]
+
 		data = {
 			"type": args.MessageTypes.Text,
 			"content": message,
+			"clientRefId": clientrefid(),
+			"attachedObject": None,
 			"extensions": {
 				"linkSnippetList": [{
 					"link": link,
-					"mediaValue": url
+					"mediaUploadValueContentType": fileType,
+					"mediaType": 100,
+					"mediaUploadValue": b64encode(image.read()).decode()
 				}]
 			},
-			"attachedObject": None
+			"uid": self.userId
 		}
 
-		return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/message", data).json())
+		return Message(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/message", data).json())
 
 	def delete_message(self, chatId: str, messageId: str, asStaff: bool = False, reason: str | None = None, comId: str | int | None = None) -> BaseObject:
 		"""
@@ -201,6 +211,7 @@ class CommunityChatsModule(BaseClass):
 		if asStaff:
 			data: dict = {
 				"adminOpName": 102,
+				"uid": self.userId
 			}
 			if reason:data["adminOpNote"] = {"content": reason}
 			return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/message/{messageId}/admin", data).json())
@@ -214,10 +225,14 @@ class CommunityChatsModule(BaseClass):
 		- messageId : ID of the Message.
 		- chatId : ID of the Chat.
 		"""
-		data = {"messageId": messageId}
+		data = {
+			"messageId": messageId,
+			"uid": self.userId,
+			"createdTime": get_iso_timestamp()
+			}
 		return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}/mark-as-read", data).json())
 
-	def edit_chat(self, chatId: str, title: str | None = None, icon: str | None = None, content: str | None = None, announcement: str | None = None, keywords: list | None = None, pinAnnouncement: bool | None = None, publishToGlobal: bool | None = None, fansOnly: bool | None = None, comId: str | int | None = None) -> BaseObject:
+	def edit_chat(self, chatId: str, title: str | None = None, icon: BinaryIO | None = None, backgroundImage: BinaryIO | None = None, content: str | None = None, announcement: str | None = None, keywords: list | None = None, pinAnnouncement: bool | None = None, publishToGlobal: bool | None = None, fansOnly: bool | None = None, comId: str | int | None = None) -> BaseObject:
 		"""
 		Edit chat settings.
 
@@ -226,6 +241,7 @@ class CommunityChatsModule(BaseClass):
 		- title : Title of the Chat.
 		- content : Content of the Chat.
 		- icon : Icon of the Chat.
+		- backgroundImage: background Image of chat
 		- announcement : Announcement of the Chat.
 		- pinAnnouncement : If the Chat Announcement should Pinned or not.
 		- keywords : List of Keywords of the Chat.
@@ -233,15 +249,19 @@ class CommunityChatsModule(BaseClass):
 		- fansOnly : If the Chat should be Fans Only or not.
 		"""
 
-		data = {}
+		data: dict = {"uid": self.userId, "extensions":{}}
 		
 		if title: data["title"] = title
 		if content: data["content"] = content
-		if icon: data["icon"] = icon
+		if icon: data["icon"] = self.upload_media(icon).mediaValue
+		if backgroundImage:
+			d = [100, self.upload_media(backgroundImage).mediaValue, None]
+			data["extensions"]["bm"] = d 
+			data["backgroundMedia"] = d
 		if keywords: data["keywords"] = keywords
-		if announcement: data["extensions"] = {"announcement": announcement}
-		if pinAnnouncement: data["extensions"] = {"pinAnnouncement": pinAnnouncement}
-		if fansOnly: data["extensions"] = {"fansOnly": fansOnly}
+		if announcement: data["extensions"]["announcement"] = announcement
+		if pinAnnouncement: data["extensions"]["pinAnnouncement"] = pinAnnouncement
+		if fansOnly: data["extensions"]["fansOnly"] = fansOnly
 		if publishToGlobal is not None: data["publishToGlobal"] = 0 if publishToGlobal else 1
 
 		return BaseObject(self.req.make_sync_request("POST",  f"/x{comId or self.comId}/s/chat/thread/{chatId}", data).json())
@@ -256,6 +276,7 @@ class CommunityChatsModule(BaseClass):
 		"""
 		data = {
 			"alertOption": 2 if doNotDisturb else 1,
+			"uid": self.userId
 		}
 		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/member/{self.userId}/alert", data).json())
 
@@ -269,20 +290,6 @@ class CommunityChatsModule(BaseClass):
 		"""
 		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}{'pin' if pin else 'unpin'}", {}).json())
 
-
-	def set_chat_background(self, chatId: str, backgroundImage: BinaryIO, comId: str | int | None = None) -> BaseObject:
-		"""
-		Change chat background
-
-		**Parameters**
-		- chatId : id of the chat
-		- backgroundImage : picture for background
-		"""
-		data = {
-			"media": [100, self.upload_media(backgroundImage).mediaValue, None]
-		}
-		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/member/{self.userId}/background", data).json())
-	
 	def add_co_hosts(self, chatId: str, coHosts: list, comId: str | int | None = None) -> BaseObject:
 		"""
 		Add assistants to chat
@@ -296,7 +303,6 @@ class CommunityChatsModule(BaseClass):
 		}
 		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/co-host", data).json())
 
-
 	def delete_co_host(self, chatId: str, userId: str, comId: str | int | None = None) -> BaseObject:
 		"""
 		Remove co-host from chat
@@ -305,7 +311,6 @@ class CommunityChatsModule(BaseClass):
 		- userId: id of the user 
 		"""
 		return BaseObject(self.req.make_sync_request("DELETE", f"/x{comId or self.comId}/chat/thread/{chatId}/co-host/{userId}").json())
-
 
 	def chat_view_only(self, chatId: str, viewOnly: bool = False, comId: str | int | None = None) -> BaseObject:
 		"""
@@ -345,7 +350,7 @@ class CommunityChatsModule(BaseClass):
 		- chatId: id of the chat 
 		- userIds: id of the user's
 		"""
-		data = { "uidList": userIds }
+		data = { "uid": userIds }
 		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/transfer-organizer", data).json())
 
 	def accept_host(self, chatId: str, requestId: str, comId: str | int | None = None) -> BaseObject:
@@ -368,7 +373,7 @@ class CommunityChatsModule(BaseClass):
 		**Parameters**
 		- chatId : ID of the Chat.
 		"""
-		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/member/{self.userId}").json())
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId or self.comId}/s/chat/thread/{chatId}/member/{self.userId}", content_type="application/x-www-form-urlencoded").json())
 
 	def leave_chat(self, chatId: str, comId: str | int | None = None) -> BaseObject:
 		"""
@@ -377,7 +382,7 @@ class CommunityChatsModule(BaseClass):
 		**Parameters**
 		- chatId : ID of the Chat.
 		"""
-		return BaseObject(self.req.make_sync_request("DELETE", f"/x{comId or self.comId}/s/chat/thread/{chatId}/member/{self.userId}").json())
+		return BaseObject(self.req.make_sync_request("DELETE", f"/x{comId or self.comId}/s/chat/thread/{chatId}/member/{self.userId}", content_type="application/x-www-form-urlencoded").json())
 
 	def delete_chat(self, chatId: str, comId: str | int | None = None) -> BaseObject:
 		"""

@@ -47,7 +47,7 @@ __title__ = 'amino.py.api'
 __author__ = 'Xsarz'
 __license__ = 'MIT'
 __copyright__ = f'Copyright 2025-2026 {__author__}'
-__version__ = '0.9.8.2hf'
+__version__ = '0.9.8.3'
 __telegram__ = 'https://t.me/DXsarzHUB'
 
 

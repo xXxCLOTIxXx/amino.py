@@ -54,13 +54,12 @@ class GlobalCommunitiesModule(BaseClass):
 		- comId : ID of the Community.
 		- invitationId : ID of the Invitation Code.
 		"""
-		raise DeprecatedFunction
 		
-		data = {}
+		data = {"uid": self.userId}
 		if invitationId:data["invitationId"] = invitationId
 		return BaseObject(self.req.make_sync_request("POST", f"/x{comId}/s/community/join", data).json())
 
-	def request_join_community(self, comId: int, message: str | None = None) -> BaseObject:
+	def request_join_community(self, comId: int, message: str = "") -> BaseObject:
 		"""
 		Request to join a Community.
 
@@ -68,7 +67,7 @@ class GlobalCommunitiesModule(BaseClass):
 		- comId : ID of the Community.
 		- message : Message to be sent.
 		"""
-		return BaseObject(self.req.make_sync_request("POST", f"/x{comId}/s/community/membership-request", {"message": message}).json())
+		return BaseObject(self.req.make_sync_request("POST", f"/x{comId}/s/community/membership-request", {"message": message, "uid": self.userId}).json())
 
 	def leave_community(self, comId: int) -> BaseObject:
 		"""
@@ -93,6 +92,7 @@ class GlobalCommunitiesModule(BaseClass):
 			"objectType": 16,
 			"flagType": flagType,
 			"message": reason,
+			"uid": self.userId
 		}
 		return BaseObject(self.req.make_sync_request("POST", f"/x{comId}/s/{'g-flag' if isGuest else 'flag'}", data).json())
 
