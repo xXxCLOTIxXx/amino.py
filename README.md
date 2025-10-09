@@ -12,6 +12,7 @@
 			<img src="https://img.shields.io/badge/%D0%A1%D0%BF%D0%BE%D0%BD%D1%81%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D1%82%D1%8C-Donate-F79B1F?style=for-the-badge&logo=github&logoColor=FF69B4&color=FF69B4" alt="Sponsor project"/>
 		</a>
 <a href="https://github.com/xXxCLOTIxXx/xXxCLOTIxXx/blob/main/contacts.md"><img src="https://img.shields.io/badge/Контакты-Contacts-F79B1F?style=for-the-badge&logoColor=0077b6&color=0077b6" alt="contacts" /></a>
+		<h1><a href="https://discord.gg/fU3kvg5MZM">Join to our support server</a></h1>
 		<hr>
 		<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=28&duration=2000&pause=2000&color=3DACF7&random=false&width=200&repeat=false&lines=Installation" alt="Installation"/>
 	</div>
