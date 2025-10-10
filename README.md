@@ -69,7 +69,8 @@ def text_msg(data: amino.Event):
 
 if __name__ == "__main__":
     client.login(email='email', password='password')
-    client.wait_socket()
+	print("ok")
+    client.wait_socket() 
 
 ```
 
