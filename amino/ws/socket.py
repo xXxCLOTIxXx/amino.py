@@ -19,7 +19,8 @@ from amino.objects.args import (
 	ws_message_types,
 	notification_types
 )
-from amino.objects import Event
+from amino.objects import Event, Message
+from amino import args
 from amino.helpers.constants import ws_url, ws_ping_interval
 from amino.helpers.generator import signature
 from amino.helpers.exceptions import SpecifyType
@@ -60,6 +61,47 @@ class EventHandler:
 			return handler
 
 		return registerHandler
+	
+
+	@staticmethod
+	def command_validator(commands: list[str], handler):
+		def wrapped_handler(data: Event):
+			if not isinstance(data.message.content, str):
+				return
+			
+			message_content = data.message.content.lower()
+			for command in commands:
+				if message_content.startswith(command.lower()):
+					data.message.content = data.message.content[len(command):].strip()
+					handler(data)
+					break
+		return wrapped_handler
+
+	def command(self, commands: list):
+		"""
+		Decorator for registering a command handler.
+
+		:param commands: List of commands.
+		:return: Decorator function.
+		"""
+		def registerCommands(handler):
+			self.add_command(commands, handler)
+			return handler
+		return registerCommands
+
+	def add_command(self, commands: list, handler):
+		"""
+		Registers a command handler for processing messages.
+
+		:param commands: List of commands.
+		:param handler: Function to execute when a command is detected.
+		:return: Command validator function.
+		"""
+
+		if args.wsEvent.on_text_message in self.handlers:self.handlers[args.wsEvent.on_text_message].append(self.command_validator(commands, handler))
+		else:self.handlers[args.wsEvent.on_text_message] = [self.command_validator(commands, handler)]
+		return handler
+
 
 	def call(self, data: dict) -> None:
 		"""
